@@ -1,0 +1,8 @@
+dependencies:
+  - name: pivot
+    version: 1.0.9
+    src: htmlwidgets/lib/orb-1.0.9
+    script:
+      - orb-1.0.9.min.js
+    stylesheet:
+      - orb-1.0.9.min.css

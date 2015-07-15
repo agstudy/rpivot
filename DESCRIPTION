@@ -1,0 +1,25 @@
+Package: rpivot
+Type: Package
+Title: Create Interactive pivot table the JavaScript 'orb' Library
+Version: 0.1
+Date: 2015-07-15
+Authors@R: c(
+      person("Amine", "Gassem", email = "contact@ag-study.com", role = c("aut", "cre"))
+      )
+Maintainer: Amine GASSEM <contact@ag-study.com>
+Description: Create and customize interactive pivot table using the 'orb' JavaScript
+    library and the 'htmlwidgets' package. These pivot table can be used directly from
+    the R console, from 'RStudio', in Shiny apps and R Markdown documents.
+License: MIT
+URL: http://agstudy.github.io/rpivot/
+BugReports: https://github.com/agstudy/rpivot/issues
+Imports:
+    htmlwidgets,
+    magrittr,
+    markdown
+Suggests:
+    knitr,
+    shiny,
+    testthat,
+    R6,
+    RJSONIO
