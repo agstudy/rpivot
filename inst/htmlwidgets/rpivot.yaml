@@ -1,8 +1,9 @@
 dependencies:
-  - name: pivot
+  - name: rpivot
     version: 1.0.9
     src: htmlwidgets/lib/orb-1.0.9
     script:
+      - react-0.12.2.min.js
       - orb-1.0.9.min.js
     stylesheet:
       - orb-1.0.9.min.css
