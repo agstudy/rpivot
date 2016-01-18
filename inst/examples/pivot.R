@@ -17,6 +17,12 @@ fields = list(
 
 path <- system.file("tests","data","testData.csv",package="rpivot")
 data = read.csv(path,header=FALSE,stringsAsFactors=FALSE)
+colnames(data)  <- 0:6
 
 
-rpivot(data,fields=fields)
+
+
+rpivot(data,fields=fields,
+       rows=list("1"),
+       columns=list("2"),
+       data=list("Amount"))

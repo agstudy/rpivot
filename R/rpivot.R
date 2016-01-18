@@ -7,7 +7,7 @@
 #' other applications.
 #'
 
-#' @param data a data object (currently supported objects are matrices, data
+#' @param dataSource a data object (currently supported objects are matrices, data
 #'   frames, and data.table
 #' @param width the width of the pivot
 #' @param height the height of the pivot
@@ -15,22 +15,32 @@
 #' @examples inst/examples/pivot.R
 #' @export
 #'
-rpivot = function(data = NULL,fields,  width = NULL, height = NULL) {
+rpivot <-
+  function(dataSource,
+           fields ,
+           rows =NULL,
+           columns =NULL,
+           data =NULL,
+           width = NULL,
+           height = NULL) {
 
-  # create a list that contains the settings
-  config <- list(
-    fields = fields
-  )
+    # create a list that contains the settings
+    config <- list(
+      fields = fields,
+      rows = rows,
+      columns=columns,
+      data=data
+    )
 
-  # pass the data and settings using 'x'
-  x <- list(
-    data = data,
-    config = config
-  )
-
-  # create the widget
-  htmlwidgets::createWidget("rpivot", x, width = width, height = height)
-}
+    # pass the data and settings using 'x'
+    x <- list(
+      dataSource = dataSource,
+      config = config
+    )
+    attr(x, 'TOJSON_ARGS') <- list(dataframe = "rows")
+    # create the widget
+    htmlwidgets::createWidget("rpivot", x, width = width, height = height)
+  }
 
 
 
