@@ -46,11 +46,13 @@ rpivot <-
 
 
 #' @export
+#' @import htmlwidgets
 pivotOutput <- function(outputId, width = "100%", height = "400px") {
   shinyWidgetOutput(outputId, "rpivot", width, height, package = "rpivot")
 }
 #' @export
+#' @import htmlwidgets
 renderPivot <- function(expr, env = parent.frame(), quoted = FALSE) {
   if (!quoted) { expr <- substitute(expr) } # force quoted
-  shinyRenderWidget(expr, sigmaOutput, env, quoted = TRUE)
+  shinyRenderWidget(expr, pivotOutput, env, quoted = TRUE)
 }

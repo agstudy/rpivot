@@ -8,9 +8,10 @@ Authors@R: c(
         person("Najmeddine", "Ennouri", role = c("aut"))
       )
 Maintainer: Amine GASSEM <contact@ag-study.com>
-Description: Create and customize interactive pivot table using the 'orb' JavaScript
-    library and the 'htmlwidgets' package. These pivot table can be used directly from
-    the R console, from 'RStudio', in Shiny apps and R Markdown documents.
+Description: Create and customize interactive pivot table using the 'orb'
+    JavaScript library and the 'htmlwidgets' package. These pivot table can be
+    used directly from the R console, from 'RStudio', in Shiny apps and R Markdown
+    documents.
 License: MIT
 URL: http://agstudy.github.io/rpivot/
 BugReports: https://github.com/agstudy/rpivot/issues
@@ -24,3 +25,4 @@ Suggests:
     testthat,
     R6,
     RJSONIO
+RoxygenNote: 5.0.1
