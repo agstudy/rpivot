@@ -64,20 +64,23 @@ server = function(input, output, session) {
 
   output$pivot <- renderPivot({
     fields = list(
-      list(name= '0', caption= 'Candidate' ),
-      list(name= '1', caption= 'Party' ),
-      list( name= '2', caption= 'Province', sort= list( order= 'asc' ) ),
-      list( name= '3', caption= 'Age' ),
-      list( name= '4', caption= 'Gender', sort= list( order= 'desc' ) ),
+      list(name= 'Candidate', caption= 'Candidate' ),
+      list(name= 'Party', caption= 'Party' ),
+      list( name= 'Province', caption= 'Province', sort= list( order= 'asc' ) ),
+      list( name= 'Age', caption= 'Age' ),
+      list( name= 'Gender', caption= 'Gender', sort= list( order= 'desc' ) ),
       list(
-        name= '5',
+        name= 'votes',
         caption= 'votes',
         dataSettings= list(
-          aggregateFunc= 'avg'
+          aggregateFunc= 'avg',
+          formatFunc = htmlwidgets::JS('function(value) {
+            return value ? Number(value).toFixed(2) : \'\';
+          }')
         )
       )
     )
-    rpivot(dataSource =   canadianElections   ,fields=fields,  rows = list( "2"),columns=list("1"),
+    rpivot(dataSource =   canadianElections   ,fields=fields,  rows = list( "Province"),columns=list("Party"),
                 data = list("votes"), width="50%", height="550px")
   })
 

@@ -22,14 +22,20 @@ rpivot <-
            columns =NULL,
            data =NULL,
            width = NULL,
-           height = NULL) {
+           height = NULL,
+           dataSettings=NULL) {
+
+    if(missing(fields)){
+      fields <- lapply(names(dataSource),function(x)list(name=x))
+    }
 
     # create a list that contains the settings
     config <- list(
       fields = fields,
       rows = rows,
       columns=columns,
-      data=data
+      data=data,
+      dataSettings = dataSettings
     )
 
     # pass the data and settings using 'x'
