@@ -23,7 +23,9 @@ rpivot <-
            data =NULL,
            width = NULL,
            height = NULL,
-           dataSettings=NULL) {
+           dataSettings=NULL,
+           dataHeadersLocation ="columns",
+           theme="green") {
 
     if(missing(fields)){
       fields <- lapply(names(dataSource),function(x)list(name=x))
@@ -35,7 +37,10 @@ rpivot <-
       rows = rows,
       columns=columns,
       data=data,
-      dataSettings = dataSettings
+      dataSettings = dataSettings,
+      theme= theme,
+      dataHeadersLocation=dataHeadersLocation,
+      toolbar= list(visible= TRUE)
     )
 
     # pass the data and settings using 'x'

@@ -4,6 +4,6 @@ dependencies:
     src: htmlwidgets/lib/orb-1.0.9
     script:
       - react-0.12.2.min.js
-      - orb-1.0.9.min.js
+      - orb.js
     stylesheet:
       - orb-1.0.9.min.css

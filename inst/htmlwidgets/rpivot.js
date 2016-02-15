@@ -14,9 +14,9 @@ HTMLWidgets.widget({
     var config = x.config;
     config.dataSource = x.dataSource;
 
-    var pgridw = new orb.pgridwidget(config);
+    window.pgridwidget = new orb.pgridwidget(config);
     // Render it inside a container element:
-    pgridw.render(el);
+    pgridwidget.render(el);
 
   },
 

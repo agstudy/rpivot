@@ -5,7 +5,8 @@
 \title{Create orb pivot widget}
 \usage{
 rpivot(dataSource, fields, rows = NULL, columns = NULL, data = NULL,
-  width = NULL, height = NULL)
+  width = NULL, height = NULL, dataSettings = NULL,
+  dataHeadersLocation = "columns", theme = "green")
 }
 \arguments{
 \item{dataSource}{a data object (currently supported objects are matrices, data
