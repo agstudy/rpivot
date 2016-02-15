@@ -65,6 +65,16 @@
             module.exports.query = _dereq_('./orb.query');
             module.exports.export = _dereq_('./orb.export.excel');
 
+            var instances = module.exports.instances = {
+                findByDOMElement: function(element) {
+                    var name = element['__orb_instance'];
+                    if (name != null && typeof name === 'string') {
+                        return instances[name];
+                    }
+                    return null;
+                }
+            };
+
         }, {
             "./orb.export.excel": 6,
             "./orb.pgrid": 8,
@@ -608,6 +618,7 @@
 
                 var self = this;
 
+                this.name = config.name;
                 this.dataSource = config.dataSource || [];
                 this.canMoveFields = config.canMoveFields !== undefined ? !!config.canMoveFields : true;
                 this.dataHeadersLocation = config.dataHeadersLocation === 'columns' ? 'columns' : 'rows';
@@ -1338,10 +1349,13 @@
                 var self = this;
                 var _iCache;
 
+                function applyConfig(newConfig) {
+                    self.config = new configuration(newConfig);
+                    self.filters = self.config.getPreFilters();
+                    self.filteredDataSource = self.config.dataSource;
+                }
 
-                this.config = new configuration(config);
-                this.filters = self.config.getPreFilters();
-                this.filteredDataSource = self.config.dataSource;
+                applyConfig(config);
 
                 this.rows = new axe(self, axe.Type.ROWS);
                 this.columns = new axe(self, axe.Type.COLUMNS);
@@ -1392,6 +1406,11 @@
 
                 this.applyFilter = function(fieldname, operator, term, staticValue, excludeStatic) {
                     self.filters[fieldname] = new filtering.expressionFilter(operator, term, staticValue, excludeStatic);
+                    refresh();
+                };
+
+                this.rebuild = function(newConfig) {
+                    applyConfig(newConfig);
                     refresh();
                 };
 
@@ -2709,6 +2728,7 @@
             "./orb.state": 10
         }],
         15: [function(_dereq_, module, exports) {
+            (function(global) {
 
 
 
@@ -2716,236 +2736,252 @@
 
 
 
-            var axe = _dereq_('./orb.axe');
-            var pgrid = _dereq_('./orb.pgrid');
-            var uiheaders = _dereq_('./orb.ui.header');
-            var uirows = _dereq_('./orb.ui.rows');
-            var uicols = _dereq_('./orb.ui.cols');
-            //var React = require('react');
-            var OrbReactComps = _dereq_('./react/orb.react.compiled');
+                var axe = _dereq_('./orb.axe');
+                var pgrid = _dereq_('./orb.pgrid');
+                var uiheaders = _dereq_('./orb.ui.header');
+                var uirows = _dereq_('./orb.ui.rows');
+                var uicols = _dereq_('./orb.ui.cols');
+                //var React = require('react');
+                var OrbReactComps = _dereq_('./react/orb.react.compiled');
 
-            module.exports = function(config) {
+                module.exports = function(config) {
 
-                var self = this;
-                var renderElement;
-                var pivotComponent;
-                var dialog = OrbReactComps.Dialog.create();
+                    var self = this;
+                    var renderElement;
+                    var pivotComponent;
+                    var dialog = OrbReactComps.Dialog.create();
 
-
-                this.pgrid = new pgrid(config);
-
-
-                this.rows = null;
-
-                this.columns = null;
-
-
-                this.dataRows = [];
-
-                this.layout = {
-                    rowHeaders: {
-
-                        width: null,
-
-                        height: null
-                    },
-                    columnHeaders: {
-
-                        width: null,
-
-                        height: null,
-                    },
-                    pivotTable: {
-
-                        width: null,
-
-                        height: null
-                    }
-                };
-
-                this.sort = function(axetype, field) {
-                    if (axetype === axe.Type.ROWS) {
-                        self.pgrid.rows.sort(field);
-                    } else if (axetype === axe.Type.COLUMNS) {
-                        self.pgrid.columns.sort(field);
-                    } else {
-                        return;
+                    // register this instance globally if a name is defined
+                    if (config.name != null && typeof config.name === 'string') {
+                        global.orb.instances[config.name] = this;
                     }
 
-                    buildUi();
-                };
 
-                this.getCurrentConfig = function() {
-                    return self.pgrid.config.toJSON();
-                };
+                    this.pgrid = new pgrid(config);
 
-                this.refreshData = function(data) {
-                    self.pgrid.refreshData(data);
-                    buildUi();
-                    pivotComponent.setProps({});
-                };
 
-                this.applyFilter = function(fieldname, operator, term, staticValue, excludeStatic) {
-                    self.pgrid.applyFilter(fieldname, operator, term, staticValue, excludeStatic);
-                    buildUi();
-                };
+                    this.rows = null;
 
-                this.moveField = function(field, oldAxeType, newAxeType, position) {
-                    if (self.pgrid.moveField(field, oldAxeType, newAxeType, position)) {
-                        buildUi();
-                        return true;
-                    }
-                    return false;
-                };
+                    this.columns = null;
 
-                this.toggleFieldExpansion = function(axetype, field, newState) {
-                    if (axetype === axe.Type.ROWS) {
-                        return self.rows.toggleFieldExpansion(field, newState);
-                    } else if (axetype === axe.Type.COLUMNS) {
-                        return self.columns.toggleFieldExpansion(field, newState);
-                    }
-                    return false;
-                };
 
-                this.toggleSubtotals = function(axetype) {
-                    if (self.pgrid.config.toggleSubtotals(axetype)) {
-                        buildUi();
-                        return true;
-                    }
-                    return false;
-                };
+                    this.dataRows = [];
 
-                this.areSubtotalsVisible = function(axetype) {
-                    return self.pgrid.config.areSubtotalsVisible(axetype);
-                };
-
-                this.toggleGrandtotal = function(axetype) {
-                    if (self.pgrid.config.toggleGrandtotal(axetype)) {
-                        buildUi();
-                        return true;
-                    }
-                    return false;
-                };
-
-                this.isGrandtotalVisible = function(axetype) {
-                    return self.pgrid.config.isGrandtotalVisible(axetype);
-                };
-
-                this.changeTheme = function(newTheme) {
-                    pivotComponent.changeTheme(newTheme);
-                };
-
-                this.render = function(element) {
-                    renderElement = element;
-                    if (renderElement) {
-                        var pivotTableFactory = React.createFactory(OrbReactComps.PivotTable);
-                        var pivottable = pivotTableFactory({
-                            pgridwidget: self
-                        });
-
-                        pivotComponent = React.render(pivottable, element);
-                    }
-                };
-
-                this.drilldown = function(dataCell, pivotId) {
-                    if (dataCell) {
-                        var colIndexes = dataCell.columnDimension.getRowIndexes();
-                        var data = dataCell.rowDimension.getRowIndexes().filter(function(index) {
-                            return colIndexes.indexOf(index) >= 0;
-                        }).map(function(index) {
-                            return self.pgrid.filteredDataSource[index];
-                        });
-
-                        var title;
-                        if (dataCell.rowType === uiheaders.HeaderType.GRAND_TOTAL && dataCell.colType === uiheaders.HeaderType.GRAND_TOTAL) {
-                            title = 'Grand total';
-                        } else {
-                            if (dataCell.rowType === uiheaders.HeaderType.GRAND_TOTAL) {
-                                title = dataCell.columnDimension.value + '/Grand total ';
-                            } else if (dataCell.colType === uiheaders.HeaderType.GRAND_TOTAL) {
-                                title = dataCell.rowDimension.value + '/Grand total ';
-                            } else {
-                                title = dataCell.rowDimension.value + '/' + dataCell.columnDimension.value;
-                            }
-                        }
-
-                        var pivotStyle = window.getComputedStyle(pivotComponent.getDOMNode(), null);
-
-                        dialog.show({
-                            title: title,
-                            comp: {
-                                type: OrbReactComps.Grid,
-                                props: {
-                                    headers: self.pgrid.config.getDataSourceFieldCaptions(),
-                                    data: data,
-                                    theme: self.pgrid.config.theme
-                                }
-                            },
-                            theme: self.pgrid.config.theme,
-                            style: {
-                                fontFamily: pivotStyle.getPropertyValue('font-family'),
-                                fontSize: pivotStyle.getPropertyValue('font-size')
-                            }
-                        });
-                    }
-                };
-
-                buildUi();
-
-                function buildUi() {
-
-                    // build row and column headers
-                    self.rows = new uirows(self.pgrid.rows);
-                    self.columns = new uicols(self.pgrid.columns);
-
-                    var rowsHeaders = self.rows.headers;
-                    var columnsLeafHeaders = self.columns.leafsHeaders;
-
-                    // set control layout infos		
-                    self.layout = {
+                    this.layout = {
                         rowHeaders: {
-                            width: (self.pgrid.rows.fields.length || 1) +
-                                (self.pgrid.config.dataHeadersLocation === 'rows' && self.pgrid.config.dataFieldsCount > 1 ? 1 : 0),
-                            height: rowsHeaders.length
+
+                            width: null,
+
+                            height: null
                         },
                         columnHeaders: {
-                            width: self.columns.leafsHeaders.length,
-                            height: (self.pgrid.columns.fields.length || 1) +
-                                (self.pgrid.config.dataHeadersLocation === 'columns' && self.pgrid.config.dataFieldsCount > 1 ? 1 : 0)
+
+                            width: null,
+
+                            height: null,
+                        },
+                        pivotTable: {
+
+                            width: null,
+
+                            height: null
                         }
                     };
 
-                    self.layout.pivotTable = {
-                        width: self.layout.rowHeaders.width + self.layout.columnHeaders.width,
-                        height: self.layout.rowHeaders.height + self.layout.columnHeaders.height
+                    this.sort = function(axetype, field) {
+                        if (axetype === axe.Type.ROWS) {
+                            self.pgrid.rows.sort(field);
+                        } else if (axetype === axe.Type.COLUMNS) {
+                            self.pgrid.columns.sort(field);
+                        } else {
+                            return;
+                        }
+
+                        buildUi();
                     };
 
-                    var dataRows = [];
-                    var arr;
+                    this.getCurrentConfig = function() {
+                        return self.pgrid.config.toJSON();
+                    };
 
-                    function createVisibleFunc(rowvisible, colvisible) {
-                        return function() {
-                            return rowvisible() && colvisible();
-                        };
-                    }
-                    if (rowsHeaders.length > 0) {
-                        for (var ri = 0; ri < rowsHeaders.length; ri++) {
-                            var rowHeadersRow = rowsHeaders[ri];
-                            var rowLeafHeader = rowHeadersRow[rowHeadersRow.length - 1];
+                    this.rebuild = function(newConfig) {
+                        self.pgrid.rebuild(newConfig);
+                        buildUi();
+                        pivotComponent.setProps({});
+                    };
 
-                            arr = [];
-                            for (var colHeaderIndex = 0; colHeaderIndex < columnsLeafHeaders.length; colHeaderIndex++) {
-                                var columnLeafHeader = columnsLeafHeaders[colHeaderIndex];
-                                var isvisible = createVisibleFunc(rowLeafHeader.visible, columnLeafHeader.visible);
-                                arr[colHeaderIndex] = new uiheaders.dataCell(self.pgrid, isvisible, rowLeafHeader, columnLeafHeader);
+                    this.refreshData = function(data) {
+                        self.pgrid.refreshData(data);
+                        buildUi();
+                        pivotComponent.setProps({});
+                    };
+
+                    this.applyFilter = function(fieldname, operator, term, staticValue, excludeStatic) {
+                        self.pgrid.applyFilter(fieldname, operator, term, staticValue, excludeStatic);
+                        buildUi();
+                    };
+
+                    this.moveField = function(field, oldAxeType, newAxeType, position) {
+                        if (self.pgrid.moveField(field, oldAxeType, newAxeType, position)) {
+                            buildUi();
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    this.toggleFieldExpansion = function(axetype, field, newState) {
+                        if (axetype === axe.Type.ROWS) {
+                            return self.rows.toggleFieldExpansion(field, newState);
+                        } else if (axetype === axe.Type.COLUMNS) {
+                            return self.columns.toggleFieldExpansion(field, newState);
+                        }
+                        return false;
+                    };
+
+                    this.toggleSubtotals = function(axetype) {
+                        if (self.pgrid.config.toggleSubtotals(axetype)) {
+                            buildUi();
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    this.areSubtotalsVisible = function(axetype) {
+                        return self.pgrid.config.areSubtotalsVisible(axetype);
+                    };
+
+                    this.toggleGrandtotal = function(axetype) {
+                        if (self.pgrid.config.toggleGrandtotal(axetype)) {
+                            buildUi();
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    this.isGrandtotalVisible = function(axetype) {
+                        return self.pgrid.config.isGrandtotalVisible(axetype);
+                    };
+
+                    this.changeTheme = function(newTheme) {
+                        pivotComponent.changeTheme(newTheme);
+                    };
+
+                    this.render = function(element) {
+                        renderElement = element;
+                        if (renderElement) {
+                            var pivotTableFactory = React.createFactory(OrbReactComps.PivotTable);
+                            var pivottable = pivotTableFactory({
+                                pgridwidget: self
+                            });
+
+                            if (self.pgrid.config.name != null && typeof self.pgrid.config.name === 'string') {
+                                renderElement['__orb_instance'] = self.pgrid.config.name;
                             }
-                            dataRows.push(arr);
-                        }
-                    }
-                    self.dataRows = dataRows;
-                }
-            };
 
+                            pivotComponent = React.render(pivottable, element);
+                        }
+                    };
+
+                    this.drilldown = function(dataCell, pivotId) {
+                        if (dataCell) {
+                            var colIndexes = dataCell.columnDimension.getRowIndexes();
+                            var data = dataCell.rowDimension.getRowIndexes().filter(function(index) {
+                                return colIndexes.indexOf(index) >= 0;
+                            }).map(function(index) {
+                                return self.pgrid.filteredDataSource[index];
+                            });
+
+                            var title;
+                            if (dataCell.rowType === uiheaders.HeaderType.GRAND_TOTAL && dataCell.colType === uiheaders.HeaderType.GRAND_TOTAL) {
+                                title = 'Grand total';
+                            } else {
+                                if (dataCell.rowType === uiheaders.HeaderType.GRAND_TOTAL) {
+                                    title = dataCell.columnDimension.value + '/Grand total ';
+                                } else if (dataCell.colType === uiheaders.HeaderType.GRAND_TOTAL) {
+                                    title = dataCell.rowDimension.value + '/Grand total ';
+                                } else {
+                                    title = dataCell.rowDimension.value + '/' + dataCell.columnDimension.value;
+                                }
+                            }
+
+                            var pivotStyle = window.getComputedStyle(pivotComponent.getDOMNode(), null);
+
+                            dialog.show({
+                                title: title,
+                                comp: {
+                                    type: OrbReactComps.Grid,
+                                    props: {
+                                        headers: self.pgrid.config.getDataSourceFieldCaptions(),
+                                        data: data,
+                                        theme: self.pgrid.config.theme
+                                    }
+                                },
+                                theme: self.pgrid.config.theme,
+                                style: {
+                                    fontFamily: pivotStyle.getPropertyValue('font-family'),
+                                    fontSize: pivotStyle.getPropertyValue('font-size')
+                                }
+                            });
+                        }
+                    };
+
+                    buildUi();
+
+                    function buildUi() {
+
+                        // build row and column headers
+                        self.rows = new uirows(self.pgrid.rows);
+                        self.columns = new uicols(self.pgrid.columns);
+
+                        var rowsHeaders = self.rows.headers;
+                        var columnsLeafHeaders = self.columns.leafsHeaders;
+
+                        // set control layout infos		
+                        self.layout = {
+                            rowHeaders: {
+                                width: (self.pgrid.rows.fields.length || 1) +
+                                    (self.pgrid.config.dataHeadersLocation === 'rows' && self.pgrid.config.dataFieldsCount > 1 ? 1 : 0),
+                                height: rowsHeaders.length
+                            },
+                            columnHeaders: {
+                                width: self.columns.leafsHeaders.length,
+                                height: (self.pgrid.columns.fields.length || 1) +
+                                    (self.pgrid.config.dataHeadersLocation === 'columns' && self.pgrid.config.dataFieldsCount > 1 ? 1 : 0)
+                            }
+                        };
+
+                        self.layout.pivotTable = {
+                            width: self.layout.rowHeaders.width + self.layout.columnHeaders.width,
+                            height: self.layout.rowHeaders.height + self.layout.columnHeaders.height
+                        };
+
+                        var dataRows = [];
+                        var arr;
+
+                        function createVisibleFunc(rowvisible, colvisible) {
+                            return function() {
+                                return rowvisible() && colvisible();
+                            };
+                        }
+                        if (rowsHeaders.length > 0) {
+                            for (var ri = 0; ri < rowsHeaders.length; ri++) {
+                                var rowHeadersRow = rowsHeaders[ri];
+                                var rowLeafHeader = rowHeadersRow[rowHeadersRow.length - 1];
+
+                                arr = [];
+                                for (var colHeaderIndex = 0; colHeaderIndex < columnsLeafHeaders.length; colHeaderIndex++) {
+                                    var columnLeafHeader = columnsLeafHeaders[colHeaderIndex];
+                                    var isvisible = createVisibleFunc(rowLeafHeader.visible, columnLeafHeader.visible);
+                                    arr[colHeaderIndex] = new uiheaders.dataCell(self.pgrid, isvisible, rowLeafHeader, columnLeafHeader);
+                                }
+                                dataRows.push(arr);
+                            }
+                        }
+                        self.dataRows = dataRows;
+                    }
+                };
+
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
         }, {
             "./orb.axe": 3,
             "./orb.pgrid": 8,
