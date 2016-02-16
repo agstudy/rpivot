@@ -26,6 +26,7 @@ rpivot <-
            height = NULL,
            dataSettings=NULL,
            dataHeadersLocation ="columns",
+           toolbar =list(visible= TRUE),
            theme="green") {
 
     if(missing(fields)){
@@ -41,7 +42,7 @@ rpivot <-
       dataSettings = dataSettings,
       theme= theme,
       dataHeadersLocation=dataHeadersLocation,
-      toolbar= list(visible= TRUE)
+      toolbar= toolbar
     )
 
     # pass the data and settings using 'x'

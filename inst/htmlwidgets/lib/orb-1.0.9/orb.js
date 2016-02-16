@@ -242,7 +242,7 @@
                     this.type = type;
 
 
-                    this.fields = (function() {
+                    this.fields = function() {
                         switch (type) {
                             case AxeType.COLUMNS:
                                 return self.pgrid.config.columnFields;
@@ -253,7 +253,7 @@
                             default:
                                 return [];
                         }
-                    }());
+                    };
 
 
                     this.dimensionsCount = null;
@@ -265,7 +265,7 @@
                     this.dimensionsByDepth = null;
 
                     this.update = function() {
-                        self.dimensionsCount = self.fields.length;
+                        self.dimensionsCount = self.fields().length;
                         self.root = new Dimension(++dimid, null, null, null, self.dimensionsCount + 1, true);
 
                         self.dimensionsByDepth = {};
@@ -277,8 +277,8 @@
                         fill();
 
                         // initial sort
-                        for (var findex = 0; findex < self.fields.length; findex++) {
-                            var ffield = self.fields[findex];
+                        for (var findex = 0; findex < self.fields().length; findex++) {
+                            var ffield = self.fields()[findex];
                             if (ffield.sort.order === 'asc' || ffield.sort.order === 'desc') {
                                 self.sort(ffield, true);
                             }
@@ -308,8 +308,8 @@
                 }
 
                 function getfieldindex(field) {
-                    for (var i = 0; i < self.fields.length; i++) {
-                        if (self.fields[i].name === field.name) {
+                    for (var i = 0; i < self.fields().length; i++) {
+                        if (self.fields()[i].name === field.name) {
                             return i;
                         }
                     }
@@ -328,7 +328,7 @@
                                 var dim = self.root;
                                 for (var findex = 0; findex < self.dimensionsCount; findex++) {
                                     var depth = self.dimensionsCount - findex;
-                                    var subfield = self.fields[findex];
+                                    var subfield = self.fields()[findex];
                                     var subvalue = row[subfield.name];
                                     var subdimvals = dim.subdimvals;
 
@@ -5897,16 +5897,34 @@
 
                     if (config.toolbar && config.toolbar.visible) {
 
-                        var configButtons = config.toolbar.buttons ?
-                            defaultToolbarConfig.buttons.concat(config.toolbar.buttons) :
-                            defaultToolbarConfig.buttons;
+                        var configButtons = defaultToolbarConfig.buttons.slice(0);
+
+                        if (config.toolbar.exclude) {
+                            configButtons = defaultToolbarConfig.buttons.filter(function(button) {
+                                if (button.id && config.toolbar.exclude.indexOf(button.id) >= 0) {
+                                    return false;
+                                }
+
+                                if (button.linkedTo && button.linkedTo.every(function(linkedButton) {
+                                        return config.toolbar.exclude.indexOf(linkedButton) >= 0;
+                                    })) {
+                                    return false;
+                                }
+
+                                return true;
+                            });
+                        }
+
+                        if (config.toolbar.buttons) {
+                            configButtons = configButtons.concat(config.toolbar.buttons);
+                        }
 
                         var buttons = [];
                         for (var i = 0; i < configButtons.length; i++) {
                             var btnConfig = configButtons[i];
                             var refName = 'btn' + i;
 
-                            if (btnConfig.type == 'separator') {
+                            if (btnConfig.type === 'separator' && i > 0 && i < configButtons.length - 1 && configButtons[i - 1].type !== 'separator') {
                                 buttons.push(React.createElement("div", {
                                     key: i,
                                     className: "orb-tlbr-sep"
@@ -6027,65 +6045,112 @@
                 }
             };
 
-            defaultToolbarConfig.buttons = [{
-                type: 'label',
-                text: 'Rows:'
-            }, {
-                type: 'button',
-                tooltip: 'Expand all rows',
-                cssClass: 'expand-all',
-                action: defaultToolbarConfig.expandAllRows
-            }, {
-                type: 'button',
-                tooltip: 'Collapse all rows',
-                cssClass: 'collapse-all',
-                action: defaultToolbarConfig.collapseAllRows
-            }, {
-                type: 'button',
-                tooltip: 'Toggle rows sub totals',
-                init: defaultToolbarConfig.initSubtotals(axe.Type.ROWS),
-                action: defaultToolbarConfig.toggleSubtotals(axe.Type.ROWS)
-            }, {
-                type: 'button',
-                tooltip: 'Toggle rows grand total',
-                init: defaultToolbarConfig.initGrandtotal(axe.Type.ROWS),
-                action: defaultToolbarConfig.toggleGrandtotal(axe.Type.ROWS)
-            }, {
-                type: 'separator'
-            }, {
-                type: 'label',
-                text: 'Columns:'
-            }, {
-                type: 'button',
-                tooltip: 'Expand all columns',
-                cssClass: 'expand-all',
-                action: defaultToolbarConfig.expandAllColumns
-            }, {
-                type: 'button',
-                tooltip: 'Collapse all columns',
-                cssClass: 'collapse-all',
-                action: defaultToolbarConfig.collapseAllColumns
-            }, {
-                type: 'button',
-                tooltip: 'Toggle columns sub totals',
-                init: defaultToolbarConfig.initSubtotals(axe.Type.COLUMNS),
-                action: defaultToolbarConfig.toggleSubtotals(axe.Type.COLUMNS)
-            }, {
-                type: 'button',
-                tooltip: 'Toggle columns grand total',
-                init: defaultToolbarConfig.initGrandtotal(axe.Type.COLUMNS),
-                action: defaultToolbarConfig.toggleGrandtotal(axe.Type.COLUMNS)
-            }, {
-                type: 'separator'
-            }, {
-                type: 'label',
-                text: 'Export:'
-            }, {
-                type: 'button',
-                tooltip: 'Export to Excel',
-                cssClass: 'export-xls',
-                action: defaultToolbarConfig.exportToExcel
-            }, ];
+            defaultToolbarConfig.buttons = (function() {
+                var separator = {
+                        type: 'separator'
+                    },
+
+                    expandAllRows = {
+                        id: 'ExpandAllRows',
+                        type: 'button',
+                        tooltip: 'Expand all rows',
+                        cssClass: 'expand-all',
+                        action: defaultToolbarConfig.expandAllRows
+                    },
+                    collapseAllRows = {
+                        id: 'CollapseAllRows',
+                        type: 'button',
+                        tooltip: 'Collapse all rows',
+                        cssClass: 'collapse-all',
+                        action: defaultToolbarConfig.collapseAllRows
+                    },
+                    toggleRowsSubtotals = {
+                        id: 'ToggleRowsSubtotals',
+                        type: 'button',
+                        tooltip: 'Toggle rows sub totals',
+                        init: defaultToolbarConfig.initSubtotals(axe.Type.ROWS),
+                        action: defaultToolbarConfig.toggleSubtotals(axe.Type.ROWS)
+                    },
+                    toggleRowsGrandtotal = {
+                        id: 'ToggleRowsGrandtotal',
+                        type: 'button',
+                        tooltip: 'Toggle rows grand total',
+                        init: defaultToolbarConfig.initGrandtotal(axe.Type.ROWS),
+                        action: defaultToolbarConfig.toggleGrandtotal(axe.Type.ROWS)
+                    },
+                    rowsLabel = {
+                        type: 'label',
+                        text: 'Rows:',
+                        linkedTo: [expandAllRows.id, collapseAllRows.id, toggleRowsSubtotals.id, toggleRowsGrandtotal.id]
+                    },
+
+                    expandAllColumns = {
+                        id: 'ExpandAllColumns',
+                        type: 'button',
+                        tooltip: 'Expand all columns',
+                        cssClass: 'expand-all',
+                        action: defaultToolbarConfig.expandAllColumns
+                    },
+                    collapseAllColumns = {
+                        id: 'CollapseAllColumns',
+                        type: 'button',
+                        tooltip: 'Collapse all columns',
+                        cssClass: 'collapse-all',
+                        action: defaultToolbarConfig.collapseAllColumns
+                    },
+                    toggleColumnsSubtotals = {
+                        id: 'ToggleColumnsSubtotals',
+                        type: 'button',
+                        tooltip: 'Toggle columns sub totals',
+                        init: defaultToolbarConfig.initSubtotals(axe.Type.COLUMNS),
+                        action: defaultToolbarConfig.toggleSubtotals(axe.Type.COLUMNS)
+                    },
+                    toggleColumnsGrandtotal = {
+                        id: 'ToggleColumnsGrandtotal',
+                        type: 'button',
+                        tooltip: 'Toggle columns grand total',
+                        init: defaultToolbarConfig.initGrandtotal(axe.Type.COLUMNS),
+                        action: defaultToolbarConfig.toggleGrandtotal(axe.Type.COLUMNS)
+                    },
+                    columnsLabel = {
+                        type: 'label',
+                        text: 'Columns:',
+                        linkedTo: [expandAllColumns.id, collapseAllColumns.id, toggleColumnsSubtotals.id, toggleColumnsGrandtotal.id]
+                    },
+
+                    exportExcel = {
+                        id: 'ExportToExcel',
+                        type: 'button',
+                        tooltip: 'Export to Excel',
+                        cssClass: 'export-xls',
+                        action: defaultToolbarConfig.exportToExcel
+                    },
+                    exportExcelLabel = {
+                        type: 'label',
+                        text: 'Export:',
+                        linkedTo: [exportExcel]
+                    };
+
+                return [
+
+                    rowsLabel,
+                    expandAllRows,
+                    collapseAllRows,
+                    toggleRowsSubtotals,
+                    toggleRowsGrandtotal,
+
+                    separator,
+                    columnsLabel,
+                    expandAllColumns,
+                    collapseAllColumns,
+                    toggleColumnsSubtotals,
+                    toggleColumnsGrandtotal,
+
+                    separator,
+                    exportExcelLabel,
+                    exportExcel
+                ];
+            }());
 
         }, {
             "../orb.axe": 3,
