@@ -42,7 +42,8 @@ rpivot <-
       dataSettings = dataSettings,
       theme= theme,
       dataHeadersLocation=dataHeadersLocation,
-      toolbar= toolbar
+      toolbar= toolbar,
+      grandTotal = list( rowsvisible=FALSE, columnsvisible= FALSE )
     )
 
     # pass the data and settings using 'x'
