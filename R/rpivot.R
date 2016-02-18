@@ -18,6 +18,7 @@
 rpivot <-
   function(dataSource,
            fields ,
+           displayMode =NULL,
            name ="pgridwidget",
            rows =NULL,
            columns =NULL,
@@ -35,6 +36,7 @@ rpivot <-
 
     # create a list that contains the settings
     config <- list(
+      displayMode =displayMode,
       fields = fields,
       rows = rows,
       columns=columns,

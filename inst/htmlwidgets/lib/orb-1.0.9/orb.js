@@ -1,9 +1,9 @@
 /**
- * orb v1.0.9, Pivot table javascript library.
+ * orb v1.1.0, Pivot table javascript library.
  *
  * Copyright (c) 2014-2016 Najmeddine Nouri <devnajm@gmail.com>.
  *
- * @version v1.0.9
+ * @version v1.1.0
  * @link http://orbjs.net/
  * @license MIT
  */
@@ -63,7 +63,7 @@
             module.exports.pgrid = _dereq_('./orb.pgrid');
             module.exports.pgridwidget = _dereq_('./orb.ui.pgridwidget');
             module.exports.query = _dereq_('./orb.query');
-            module.exports.export = _dereq_('./orb.export.excel');
+            module.exports['export'] = _dereq_('./orb.export.excel');
 
             var instances = module.exports.instances = {
                 findByDOMElement: function(element) {
@@ -80,7 +80,7 @@
             "./orb.pgrid": 8,
             "./orb.query": 9,
             "./orb.ui.pgridwidget": 15,
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         2: [function(_dereq_, module, exports) {
 
@@ -170,7 +170,7 @@
                 stdevp: function(datafield, intersection, datasource) {
                     return Math.sqrt(calcVariance(datafield, intersection, datasource, true));
                 },
-                var: function(datafield, intersection, datasource) {
+                'var': function(datafield, intersection, datasource) {
                     return calcVariance(datafield, intersection, datasource, false);
                 },
                 varp: function(datafield, intersection, datasource) {
@@ -298,12 +298,39 @@
                             var depth = self.dimensionsCount - getfieldindex(field);
                             var parents = depth === self.dimensionsCount ? [self.root] : self.dimensionsByDepth[depth + 1];
                             for (var i = 0; i < parents.length; i++) {
-                                parents[i].values.sort();
+                                if (field.sort.customfunc != null) {
+                                    parents[i].values.sort(field.sort.customfunc);
+                                } else {
+                                    parents[i].values.sort();
+                                }
                                 if (field.sort.order === 'desc') {
                                     parents[i].values.reverse();
                                 }
                             }
                         }
+                    };
+
+                    this.flattenValues = function() {
+                        if (self.dimensionsByDepth[1] == null) {
+                            return [];
+                        }
+
+                        return self.dimensionsByDepth[1].map(function(dim) {
+                            var name = '';
+                            var currDim = dim;
+                            while (!currDim.isRoot) {
+                                name = currDim.value + (name !== '' ? '-' + name : '');
+                                currDim = currDim.parent;
+                            }
+                            return {
+                                name: name,
+                                dim: dim
+                            };
+                        }).sort(function(a, b) {
+                            if (a.name < b.name) return -1;
+                            if (a.name > b.name) return 1;
+                            return 0;
+                        });
                     };
                 }
 
@@ -355,7 +382,7 @@
 
         }, {
             "./orb.dimension": 5,
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         4: [function(_dereq_, module, exports) {
 
@@ -531,7 +558,7 @@
 
                 options = options || {};
 
-                this.order = options.order;
+                this.order = options.order || (options.customfunc ? 'asc' : null);
                 this.customfunc = options.customfunc;
 
                 this.toJSON = function() {
@@ -551,6 +578,30 @@
                     }
 
                     return empty ? null : json;
+                };
+            }
+
+            function DisplayMode(options) {
+
+                var self = this;
+
+                options = options || {};
+
+                // type can be: 'Table', 'Chart'
+                this.type = options.type || 'Table';
+
+                // chartType can be: 'LineChart', 'AreaChart', 'ColumnChart', 'BarChart', 'SteppedAreaChart'
+                this.chartType = this.type === 'Chart' ? (options.chartType || 'LineChart') : null;
+
+                this.isChart = function() {
+                    return self.type === 'Chart';
+                }
+
+                this.toJSON = function() {
+                    return {
+                        type: self.type,
+                        chartType: self.chartType
+                    };
                 };
             }
 
@@ -628,6 +679,7 @@
                 this.height = config.height;
                 this.toolbar = config.toolbar;
                 this.theme = themeManager;
+                this.displayMode = new DisplayMode(config.displayMode);
 
                 themeManager.set(config.theme);
 
@@ -651,7 +703,7 @@
                 };
 
                 this.setTheme = function(newTheme) {
-                    return self.theme.set(newTheme);
+                    return self.theme.current() !== self.theme.current(newTheme);
                 };
 
                 this.allFields = (config.fields || []).map(function(fieldconfig) {
@@ -919,7 +971,7 @@
                             theme: self.theme.current()
                         },
                         propsGroup1 = ['dataSource', 'dataHeadersLocation', 'canMoveFields', 'preFilters', 'toolbar', 'width', 'height'],
-                        propsGroup2 = ['grandTotal', 'subTotal', 'rowSettings', 'columnSettings', 'dataSettings'],
+                        propsGroup2 = ['displayMode', 'grandTotal', 'subTotal', 'rowSettings', 'columnSettings', 'dataSettings'],
                         propsGroup3 = [{
                             propname: 'allFields',
                             destname: 'fields'
@@ -977,7 +1029,7 @@
             "./orb.axe": 3,
             "./orb.filtering": 7,
             "./orb.themes": 11,
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         5: [function(_dereq_, module, exports) {
 
@@ -1176,7 +1228,7 @@
         }, {
             "./orb.themes": 11,
             "./orb.ui.header": 14,
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         7: [function(_dereq_, module, exports) {
 
@@ -1323,7 +1375,7 @@
             };
 
         }, {
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         8: [function(_dereq_, module, exports) {
 
@@ -1431,7 +1483,7 @@
                                 values1.push(val);
                             }
                         } else {
-                            if (val) {
+                            if (val != null) {
                                 values1.push(val);
                             } else {
                                 containsBlank = true;
@@ -1455,7 +1507,9 @@
                     } else {
                         values = values1;
                     }
-                    values.containsBlank = containsBlank;
+                    if (containsBlank) {
+                        values.unshift(null);
+                    }
                     return values;
                 };
 
@@ -1494,6 +1548,52 @@
 
                 this.calcAggregation = function(rowIndexes, colIndexes, fieldNames, aggregateFunc) {
                     return computeValue(rowIndexes, colIndexes, rowIndexes, fieldNames, aggregateFunc);
+                };
+
+                this.getChartData = function() {
+
+                    var config = self.config;
+
+                    function getAxisLabel(axisFields) {
+                        var str = '';
+                        for (var ti = 0; ti < axisFields.length; ti++) {
+                            str += (ti > 0 ? ' - ' : '') + axisFields[ti].caption;
+                        }
+                        return str;
+                    }
+
+                    var rowLeafDimensions = self.rows.flattenValues();
+                    var colLeafDimensions = self.columns.flattenValues();
+
+                    if (rowLeafDimensions.length > 0 && colLeafDimensions.length > 0) {
+                        var hAxisLabel = getAxisLabel(config.columnFields);
+                        var vAxisLabel = config.dataFields[0].aggregateFuncName + '(' + config.dataFields[0].caption + ')';
+                        var legendsLabel = getAxisLabel(config.rowFields);
+
+                        var data = [];
+
+                        for (var ci = 0; ci < colLeafDimensions.length; ci++) {
+                            var cdim = colLeafDimensions[ci];
+                            var currData = [cdim.name];
+                            for (var rri = 0; rri < rowLeafDimensions.length; rri++) {
+                                currData.push(self.getData(config.dataFields[0].name, rowLeafDimensions[rri].dim, cdim.dim));
+                            }
+                            data.push(currData);
+                        }
+
+                        return {
+                            title: vAxisLabel + ': ' + hAxisLabel + ' by ' + legendsLabel,
+                            hAxisLabel: hAxisLabel,
+                            vAxisLabel: vAxisLabel,
+                            legendsLabel: legendsLabel,
+                            colNames: rowLeafDimensions.map(function(d) {
+                                return d.name;
+                            }),
+                            dataTable: data
+                        };
+                    }
+
+                    return null;
                 };
 
                 this.query = query(self);
@@ -1673,7 +1773,7 @@
             "./orb.config": 4,
             "./orb.filtering": 7,
             "./orb.query": 9,
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         9: [function(_dereq_, module, exports) {
 
@@ -2037,7 +2137,7 @@
         }, {
             "./orb.aggregation": 2,
             "./orb.axe": 3,
-            "./orb.utils": 17
+            "./orb.utils": 18
         }],
         10: [function(_dereq_, module, exports) {
 
@@ -2166,11 +2266,23 @@
                     rgbaToHex: function(rgba) {
                         var matches = rgba.match(/rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)\s*\)/);
                         if (matches) {
-                            var alpah = parseFloat(matches[4]);
+                            var alpha = parseFloat(matches[4]);
                             return '#' +
-                                utils.applyAlphaAndToHex(matches[1], alpah) +
-                                utils.applyAlphaAndToHex(matches[2], alpah) +
-                                utils.applyAlphaAndToHex(matches[3], alpah);
+                                utils.applyAlphaAndToHex(matches[1], alpha) +
+                                utils.applyAlphaAndToHex(matches[2], alpha) +
+                                utils.applyAlphaAndToHex(matches[3], alpha);
+                        }
+                        return null;
+                    },
+                    rgbaToHexA: function(rgba) {
+                        var matches = rgba.match(/rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+(?:\.\d+)?)\s*\)/);
+                        if (matches) {
+                            var alpha = parseFloat(matches[4]);
+                            return '#' +
+                                utils.applyAlphaAndToHex(0, alpha) +
+                                utils.applyAlphaAndToHex(matches[1], 1) +
+                                utils.applyAlphaAndToHex(matches[2], 1) +
+                                utils.applyAlphaAndToHex(matches[3], 1);
                         }
                         return null;
                     },
@@ -2719,7 +2831,7 @@
                     },
                     vspan: function() {
                         return vspan;
-                    },
+                    }
                 });
             };
 
@@ -2741,7 +2853,7 @@
                 var uiheaders = _dereq_('./orb.ui.header');
                 var uirows = _dereq_('./orb.ui.rows');
                 var uicols = _dereq_('./orb.ui.cols');
-                //var React = require('react');
+                var domUtils = _dereq_('./orb.utils.dom');
                 var OrbReactComps = _dereq_('./react/orb.react.compiled');
 
                 module.exports = function(config) {
@@ -2778,7 +2890,7 @@
 
                             width: null,
 
-                            height: null,
+                            height: null
                         },
                         pivotTable: {
 
@@ -2869,7 +2981,10 @@
                     this.render = function(element) {
                         renderElement = element;
                         if (renderElement) {
-                            var pivotTableFactory = React.createFactory(OrbReactComps.PivotTable);
+                            var pivotTableFactory = React.createFactory(
+                                self.pgrid.config.displayMode.isChart() ?
+                                OrbReactComps.PivotChart :
+                                OrbReactComps.PivotTable);
                             var pivottable = pivotTableFactory({
                                 pgridwidget: self
                             });
@@ -2904,8 +3019,6 @@
                                 }
                             }
 
-                            var pivotStyle = window.getComputedStyle(pivotComponent.getDOMNode(), null);
-
                             dialog.show({
                                 title: title,
                                 comp: {
@@ -2917,10 +3030,7 @@
                                     }
                                 },
                                 theme: self.pgrid.config.theme,
-                                style: {
-                                    fontFamily: pivotStyle.getPropertyValue('font-family'),
-                                    fontSize: pivotStyle.getPropertyValue('font-size')
-                                }
+                                style: pivotComponent.fontStyle
                             });
                         }
                     };
@@ -2988,7 +3098,8 @@
             "./orb.ui.cols": 13,
             "./orb.ui.header": 14,
             "./orb.ui.rows": 16,
-            "./react/orb.react.compiled": 18
+            "./orb.utils.dom": 17,
+            "./react/orb.react.compiled": 19
         }],
         16: [function(_dereq_, module, exports) {
 
@@ -3107,6 +3218,147 @@
             "./orb.ui.header": 14
         }],
         17: [function(_dereq_, module, exports) {
+
+
+
+
+
+            module.exports.forEach = function(list, func, defStop) {
+                var ret;
+                if (list) {
+                    for (var i = 0, l = list.length; i < l; i++) {
+                        ret = func(list[i], i);
+                        if (ret !== undefined && defStop === true) {
+                            break;
+                        }
+                    }
+                }
+                return ret;
+            };
+
+            module.exports.removeClass = function(element, classname) {
+                if (element && classname) {
+                    while (element.className.indexOf(classname) >= 0) {
+                        element.className = element.className.replace(classname, '');
+                    }
+                }
+            };
+
+            module.exports.addClass = function(element, classname) {
+                if (element && classname) {
+                    if (element.className.indexOf(classname) < 0) {
+                        element.className += ' ' + classname;
+                    }
+                }
+            };
+
+            module.exports.getOffset = function(element) {
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    return {
+                        x: rect.left,
+                        y: rect.top
+                    };
+                }
+                return {
+                    x: 0,
+                    y: 0
+                };
+            };
+
+            module.exports.getParentOffset = function(element) {
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    var rectParent = element.parentNode != null ? element.parentNode.getBoundingClientRect() : {
+                        top: 0,
+                        left: 0
+                    };
+                    return {
+                        x: rect.left - rectParent.left,
+                        y: rect.top - rectParent.top
+                    };
+                }
+                return {
+                    x: 0,
+                    y: 0
+                };
+            };
+
+            module.exports.getSize = function(element) {
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    return {
+                        width: rect.right - rect.left,
+                        height: rect.bottom - rect.top
+                    };
+                }
+                return {
+                    width: 0,
+                    height: 0
+                };
+            };
+
+            var reHyphenToUcase = /\-(\w)/g;
+
+            function replaceHyphenByUcase(val) {
+                return val.replace(reHyphenToUcase, function(m, m1) {
+                    return m1.toUpperCase();
+                });
+            }
+
+            module.exports.getStyle = function(element, styleProps, keepString) {
+                var values = [];
+                if (element && styleProps) {
+                    var currStyle, f, fixProp;
+                    if (element.currentStyle) {
+                        currStyle = element.currentStyle;
+                        f = function(prop) {
+                            return currStyle[prop];
+                        };
+                        fixProp = true;
+                    } else if (window && window.getComputedStyle) {
+                        currStyle = window.getComputedStyle(element, null);
+                        f = function(prop) {
+                            return currStyle.getPropertyValue(prop);
+                        };
+                    }
+
+                    for (var i = 0; i < styleProps.length; i++) {
+                        var val = f(fixProp ? replaceHyphenByUcase(styleProps[i]) : styleProps[i]);
+                        values.push(val && keepString !== true ? Math.ceil(parseFloat(val)) : val);
+                    }
+                }
+                return values;
+            };
+
+            module.exports.isVisible = function(element) {
+                if (element) {
+                    return element.style.display !== 'none' && (element.offsetWidth !== 0 || element.offsetHeight !== 0);
+                }
+                return false;
+            };
+
+            module.exports.updateTableColGroup = function(tableNode, widths) {
+                if (tableNode) {
+                    var colGroupNode = tableNode.firstChild;
+                    if (colGroupNode && colGroupNode.nodeName === 'COLGROUP') {
+                        tableNode.style.tableLayout = 'auto';
+                        tableNode.style.width = '';
+
+                        while (colGroupNode.firstChild) {
+                            colGroupNode.removeChild(colGroupNode.firstChild);
+                        }
+                        for (var i = 0; i < widths.length; i++) {
+                            var col = document.createElement('col');
+                            col.style.width = widths[i] + 'px';
+                            colGroupNode.appendChild(col);
+                        }
+                        tableNode.style.tableLayout = 'fixed';
+                    }
+                }
+            };
+        }, {}],
+        18: [function(_dereq_, module, exports) {
             (function(global) {
 
 
@@ -3175,6 +3427,66 @@
                             return censorKeywords && censorKeywords.indexOf(key) > -1 ? undefined : value;
                         }
                         return JSON.stringify(obj, censor, 2);
+                    },
+                    addEventListener: function(element, eventName, handler) {
+                        if (element.addEventListener) {
+                            element.addEventListener(eventName, handler, false);
+                        } else if (element.attachEvent) {
+                            element.attachEvent('on' + eventName, handler);
+                        } else {
+                            element['on' + eventName] = handler;
+                        }
+                    },
+                    removeEventListener: function(element, eventName, handler) {
+                        if (element.removeEventListener) {
+                            element.removeEventListener(eventName, handler, false);
+                        } else if (element.detachEvent) {
+                            element.detachEvent('on' + eventName, handler);
+                        } else {
+                            element['on' + eventName] = null;
+                        }
+                    },
+                    preventDefault: function(e) {
+                        e = e || window.event;
+
+                        if (e.preventDefault) {
+                            e.preventDefault();
+                        } else {
+                            e.returnValue = false;
+                        }
+                    },
+                    stopPropagation: function(e) {
+                        e = e || window.event;
+
+                        if (e.stopPropagation) {
+                            e.stopPropagation();
+                        } else {
+                            e.cancelBubble = true;
+                        }
+                    },
+                    getEventButton: function(e) {
+                        var button = e.button;
+                        if ('which' in e) {
+                            return button;
+                        }
+                        // IE 8
+                        return button === 1 ? 0 : // left
+                            button === 4 ? 1 : // middle
+                            2; // right
+                    },
+                    getMousePageXY: function(e) {
+                        e = e || window.event;
+
+                        var pageX = e.pageX;
+                        var pageY = e.pageY;
+                        if (pageX === undefined) {
+                            pageX = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+                            pageY = e.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+                        }
+                        return {
+                            pageX: pageX,
+                            pageY: pageY
+                        };
                     }
                 };
 
@@ -3208,7 +3520,7 @@
                             ) {
                                 charCode = str.charCodeAt(idx += 3 / 4);
                                 if (charCode > 0xFF) {
-                                    throw new InvalidCharacterError("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
+                                    throw new InvalidCharacterError('"btoa" failed: The string to be encoded contains characters outside of the Latin1 range.');
                                 }
                                 block = block << 8 | charCode;
                             }
@@ -3223,7 +3535,7 @@
                         function(input) {
                             var str = String(input).replace(/=+$/, '');
                             if (str.length % 4 == 1) {
-                                throw new InvalidCharacterError("'atob' failed: The string to be decoded is not correctly encoded.");
+                                throw new InvalidCharacterError('"atob" failed: The string to be decoded is not correctly encoded.');
                             }
                             for (
                                 // initialize result and counters
@@ -3245,14 +3557,14 @@
 
             }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
         }, {}],
-        18: [function(_dereq_, module, exports) {
+        19: [function(_dereq_, module, exports) {
 
             var react = typeof window === 'undefined' ? _dereq_('react') : window.React;
             var utils = _dereq_('../orb.utils');
             var axe = _dereq_('../orb.axe');
             var uiheaders = _dereq_('../orb.ui.header');
             var filtering = _dereq_('../orb.filtering');
-            var reactUtils = _dereq_('./orb.react.utils');
+            var domUtils = _dereq_('../orb.utils.dom');
 
             var extraCol = 0;
             var comps = module.exports;
@@ -3264,6 +3576,7 @@
                 id: pivotId++,
                 pgrid: null,
                 pgridwidget: null,
+                fontStyle: null,
                 getInitialState: function() {
                     comps.DragManager.init(this);
 
@@ -3336,169 +3649,65 @@
                     thisnode.children[1].className = classes.table;
                 },
                 componentDidUpdate: function() {
-                    this.synchronizeCompsWidths();
+                    this.synchronizeWidths();
                 },
                 componentDidMount: function() {
-                    var dataCellsContainerNode = this.refs.dataCellsContainer.getDOMNode();
-                    var dataCellsTableNode = this.refs.dataCellsTable.getDOMNode();
-                    var colHeadersContainerNode = this.refs.colHeadersContainer.getDOMNode();
-                    var rowHeadersContainerNode = this.refs.rowHeadersContainer.getDOMNode();
+                    var fontInfos = domUtils.getStyle(this.getDOMNode(), ['font-family', 'font-size'], true);
+                    this.fontStyle = {
+                        fontFamily: fontInfos[0],
+                        fontSize: fontInfos[1]
+                    };
 
-                    this.refs.horizontalScrollBar.setScrollClient(dataCellsContainerNode, function(scrollPercent) {
+                    var dataCellsNode = this.refs.dataCells.getDOMNode();
+                    var dataCellsTableNode = dataCellsNode.children[0];
+                    var colHeadersNode = this.refs.colHeaders.getDOMNode();
+                    var rowHeadersNode = this.refs.rowHeaders.getDOMNode();
+
+                    this.refs.horizontalScrollBar.setScrollClient(dataCellsNode, function(scrollPercent) {
                         var scrollAmount = Math.ceil(
                             scrollPercent * (
-                                reactUtils.getSize(dataCellsTableNode).width -
-                                reactUtils.getSize(dataCellsContainerNode).width
+                                domUtils.getSize(dataCellsTableNode).width -
+                                domUtils.getSize(dataCellsNode).width
                             )
                         );
-                        colHeadersContainerNode.scrollLeft = scrollAmount;
-                        dataCellsContainerNode.scrollLeft = scrollAmount;
+                        colHeadersNode.scrollLeft = scrollAmount;
+                        dataCellsNode.scrollLeft = scrollAmount;
                     });
 
-                    this.refs.verticalScrollBar.setScrollClient(dataCellsContainerNode, function(scrollPercent) {
+                    this.refs.verticalScrollBar.setScrollClient(dataCellsNode, function(scrollPercent) {
                         var scrollAmount = Math.ceil(
                             scrollPercent * (
-                                reactUtils.getSize(dataCellsTableNode).height -
-                                reactUtils.getSize(dataCellsContainerNode).height
+                                domUtils.getSize(dataCellsTableNode).height -
+                                domUtils.getSize(dataCellsNode).height
                             )
                         );
-                        rowHeadersContainerNode.scrollTop = scrollAmount;
-                        dataCellsContainerNode.scrollTop = scrollAmount;
+                        rowHeadersNode.scrollTop = scrollAmount;
+                        dataCellsNode.scrollTop = scrollAmount;
                     });
 
-                    this.synchronizeCompsWidths();
+                    this.synchronizeWidths();
                 },
                 onWheel: function(e) {
                     var elem;
                     var scrollbar;
                     var amount;
 
-                    if (e.currentTarget == (elem = this.refs.colHeadersContainer.getDOMNode())) {
+                    if (e.currentTarget == (elem = this.refs.colHeaders.getDOMNode())) {
                         scrollbar = this.refs.horizontalScrollBar;
                         amount = e.deltaX || e.deltaY;
-                    } else if ((e.currentTarget == (elem = this.refs.rowHeadersContainer.getDOMNode())) ||
-                        (e.currentTarget == (elem = this.refs.dataCellsContainer.getDOMNode()))) {
+                    } else if ((e.currentTarget == (elem = this.refs.rowHeaders.getDOMNode())) ||
+                        (e.currentTarget == (elem = this.refs.dataCells.getDOMNode()))) {
                         scrollbar = this.refs.verticalScrollBar;
                         amount = e.deltaY;
                     }
 
                     if (scrollbar && scrollbar.scroll(amount, e.deltaMode)) {
-                        e.stopPropagation();
-                        e.preventDefault();
+                        utils.stopPropagation(e);
+                        utils.preventDefault(e);
                     }
                 },
-                synchronizeCompsWidths: function() {
-                    var self = this;
-
-                    var pivotWrapperTable = self.refs.pivotWrapperTable.getDOMNode();
-
-                    var nodes = (function() {
-                        var nds = {};
-                        ['pivotContainer', 'dataCellsContainer', 'dataCellsTable', 'upperbuttonsRow', 'columnbuttonsRow',
-
-                            'colHeadersContainer', 'rowHeadersContainer', 'rowButtonsContainer',
-                            'toolbar', 'horizontalScrollBar', 'verticalScrollBar'
-                        ].forEach(function(refname) {
-                            if (self.refs[refname]) {
-                                nds[refname] = {
-                                    node: self.refs[refname].getDOMNode()
-                                };
-                                nds[refname].size = reactUtils.getSize(nds[refname].node);
-                            }
-                        });
-                        return nds;
-                    }());
-
-                    // colHeadersTable
-                    nodes.colHeadersTable = {
-                        node: nodes.colHeadersContainer.node.children[0]
-                    };
-                    nodes.colHeadersTable.size = reactUtils.getSize(nodes.colHeadersTable.node);
-
-                    // rowHeadersTable
-                    nodes.rowHeadersTable = {
-                        node: nodes.rowHeadersContainer.node.children[0]
-                    };
-                    nodes.rowHeadersTable.size = reactUtils.getSize(nodes.rowHeadersTable.node);
-
-                    // get row buttons container width
-                    var rowButtonsContainerWidth = reactUtils.getSize(nodes.rowButtonsContainer.node.children[0]).width;
-
-                    // get array of dataCellsTable column widths
-                    getAllColumnsWidth(nodes.dataCellsTable);
-                    // get array of colHeadersTable column widths
-                    getAllColumnsWidth(nodes.colHeadersTable);
-                    // get array of rowHeadersTable column widths
-                    getAllColumnsWidth(nodes.rowHeadersTable);
-
-                    // get the array of max widths between dataCellsTable and colHeadersTable
-                    var dataCellsTableMaxWidthArray = [];
-                    var dataCellsTableMaxWidth = 0;
-
-                    for (var i = 0; i < nodes.dataCellsTable.widthArray.length; i++) {
-                        var mxwidth = Math.max(nodes.dataCellsTable.widthArray[i], nodes.colHeadersTable.widthArray[i]);
-                        dataCellsTableMaxWidthArray.push(mxwidth);
-                        dataCellsTableMaxWidth += mxwidth;
-                    }
-
-                    var rowHeadersTableWidth = Math.max(nodes.rowHeadersTable.size.width, rowButtonsContainerWidth, 67);
-                    var rowDiff = rowHeadersTableWidth - nodes.rowHeadersTable.size.width;
-                    if (rowDiff > 0) {
-                        nodes.rowHeadersTable.size.width += rowDiff;
-                        nodes.rowHeadersTable.widthArray[nodes.rowHeadersTable.widthArray.length - 1] += rowDiff;
-                    }
-
-                    // Set dataCellsTable cells widths according to the computed dataCellsTableMaxWidthArray
-                    reactUtils.updateTableColGroup(nodes.dataCellsTable.node, dataCellsTableMaxWidthArray);
-
-                    // Set colHeadersTable cells widths according to the computed dataCellsTableMaxWidthArray
-                    reactUtils.updateTableColGroup(nodes.colHeadersTable.node, dataCellsTableMaxWidthArray);
-
-                    // Set rowHeadersTable cells widths
-                    reactUtils.updateTableColGroup(nodes.rowHeadersTable.node, nodes.rowHeadersTable.widthArray);
-
-                    nodes.dataCellsTable.node.style.width = dataCellsTableMaxWidth + 'px';
-                    nodes.colHeadersTable.node.style.width = dataCellsTableMaxWidth + 'px';
-                    nodes.rowHeadersTable.node.style.width = rowHeadersTableWidth + 'px';
-
-                    var dataCellsContainerWidth = Math.min(
-                        dataCellsTableMaxWidth + 1,
-                        nodes.pivotContainer.size.width - rowHeadersTableWidth - nodes.verticalScrollBar.size.width);
-
-                    // Adjust data cells container width
-                    nodes.dataCellsContainer.node.style.width = dataCellsContainerWidth + 'px';
-                    nodes.colHeadersContainer.node.style.width = dataCellsContainerWidth + 'px';
-
-                    var pivotContainerHeight = this.pgridwidget.pgrid.config.height;
-
-                    if (pivotContainerHeight) {
-                        // Adjust data cells container height
-                        var dataCellsTableHeight = Math.ceil(Math.min(
-                            pivotContainerHeight -
-                            (nodes.toolbar ? nodes.toolbar.size.height + 17 : 0) -
-                            nodes.upperbuttonsRow.size.height -
-                            nodes.columnbuttonsRow.size.height -
-                            nodes.colHeadersTable.size.height -
-                            nodes.horizontalScrollBar.size.height,
-                            nodes.dataCellsTable.size.height));
-
-                        nodes.dataCellsContainer.node.style.height = dataCellsTableHeight + 'px';
-                        nodes.rowHeadersContainer.node.style.height = dataCellsTableHeight + 'px';
-                    }
-
-                    reactUtils.updateTableColGroup(
-                        pivotWrapperTable, [
-                            rowHeadersTableWidth,
-                            dataCellsContainerWidth,
-                            nodes.verticalScrollBar.size.width,
-                            Math.max(
-                                nodes.pivotContainer.size.width - (
-                                    rowHeadersTableWidth +
-                                    dataCellsContainerWidth +
-                                    nodes.verticalScrollBar.size.width),
-                                0)
-                        ]);
-
+                synchronizeWidths: function() {
+                    comps.SizingManager.synchronizeWidths(this);
                     this.refs.horizontalScrollBar.refresh();
                     this.refs.verticalScrollBar.refresh();
                 },
@@ -3508,12 +3717,12 @@
 
                     var config = this.pgridwidget.pgrid.config;
                     var Toolbar = comps.Toolbar;
-                    var PivotTableUpperButtons = comps.PivotTableUpperButtons;
-                    var PivotTableColumnButtons = comps.PivotTableColumnButtons;
-                    var PivotTableRowButtons = comps.PivotTableRowButtons;
-                    var PivotTableRowHeaders = comps.PivotTableRowHeaders;
-                    var PivotTableColumnHeaders = comps.PivotTableColumnHeaders;
-                    var PivotTableDataCells = comps.PivotTableDataCells;
+                    var UpperButtons = comps.PivotTableUpperButtons;
+                    var ColumnButtons = comps.PivotTableColumnButtons;
+                    var RowButtons = comps.PivotTableRowButtons;
+                    var RowHeaders = comps.PivotTableRowHeaders;
+                    var ColumnHeaders = comps.PivotTableColumnHeaders;
+                    var DataCells = comps.PivotTableDataCells;
                     var HorizontalScrollBar = comps.HorizontalScrollBar;
                     var VerticalScrollBar = comps.VerticalScrollBar;
 
@@ -3531,7 +3740,7 @@
                         React.createElement("div", {
                                 className: classes.container,
                                 style: tblStyle,
-                                ref: "pivotContainer"
+                                ref: "pivot"
                             },
                             config.toolbar && config.toolbar.visible ? React.createElement("div", {
                                     ref: "toolbar",
@@ -3565,18 +3774,18 @@
                                 ),
                                 React.createElement("tbody", null,
                                     React.createElement("tr", {
-                                            ref: "upperbuttonsRow"
+                                            ref: "upperButtons"
                                         },
                                         React.createElement("td", {
                                                 colSpan: "4"
                                             },
-                                            React.createElement(PivotTableUpperButtons, {
+                                            React.createElement(UpperButtons, {
                                                 pivotTableComp: self
                                             })
                                         )
                                     ),
                                     React.createElement("tr", {
-                                            ref: "columnbuttonsRow"
+                                            ref: "colButtons"
                                         },
                                         React.createElement("td", null),
                                         React.createElement("td", {
@@ -3584,7 +3793,7 @@
                                                     padding: '11px 4px !important'
                                                 }
                                             },
-                                            React.createElement(PivotTableColumnButtons, {
+                                            React.createElement(ColumnButtons, {
                                                 pivotTableComp: self
                                             })
                                         ),
@@ -3598,15 +3807,15 @@
                                                     position: 'relative'
                                                 }
                                             },
-                                            React.createElement(PivotTableRowButtons, {
+                                            React.createElement(RowButtons, {
                                                 pivotTableComp: self,
-                                                ref: "rowButtonsContainer"
+                                                ref: "rowButtons"
                                             })
                                         ),
                                         React.createElement("td", null,
-                                            React.createElement(PivotTableColumnHeaders, {
+                                            React.createElement(ColumnHeaders, {
                                                 pivotTableComp: self,
-                                                ref: "colHeadersContainer"
+                                                ref: "colHeaders"
                                             })
                                         ),
                                         React.createElement("td", {
@@ -3615,22 +3824,16 @@
                                     ),
                                     React.createElement("tr", null,
                                         React.createElement("td", null,
-                                            React.createElement(PivotTableRowHeaders, {
+                                            React.createElement(RowHeaders, {
                                                 pivotTableComp: self,
-                                                ref: "rowHeadersContainer"
+                                                ref: "rowHeaders"
                                             })
                                         ),
                                         React.createElement("td", null,
-                                            React.createElement("div", {
-                                                    className: "inner-table-container data-cntr",
-                                                    ref: "dataCellsContainer",
-                                                    onWheel: this.onWheel
-                                                },
-                                                React.createElement(PivotTableDataCells, {
-                                                    pivotTableComp: self,
-                                                    ref: "dataCellsTable"
-                                                })
-                                            )
+                                            React.createElement(DataCells, {
+                                                pivotTableComp: self,
+                                                ref: "dataCells"
+                                            })
                                         ),
                                         React.createElement("td", null,
                                             React.createElement(VerticalScrollBar, {
@@ -3663,169 +3866,173 @@
                 }
             });
 
-            function getAllColumnsWidth(tblObject) {
-                if (tblObject && tblObject.node) {
+            var pivotId = 1;
+            var themeChangeCallbacks = {};
 
-                    var tbl = tblObject.node;
-                    var widthArray = [];
+            module.exports.PivotChart = react.createClass({
+                id: pivotId++,
+                pgrid: null,
+                pgridwidget: null,
+                fontStyle: null,
+                getInitialState: function() {
+                    comps.DragManager.init(this);
 
-                    for (var rowIndex = 0; rowIndex < tbl.rows.length; rowIndex++) {
-                        // current row
-                        var currRow = tbl.rows[rowIndex];
-                        // reset widthArray index
-                        var arrayIndex = 0;
-                        var currWidth = null;
+                    themeChangeCallbacks[this.id] = [];
+                    this.registerThemeChanged(this.updateClasses);
 
-                        // get the width of each cell within current row
-                        for (var cellIndex = 0; cellIndex < currRow.cells.length; cellIndex++) {
-                            // current cell
-                            var currCell = currRow.cells[cellIndex];
-
-                            if (currCell.__orb._visible) {
-                                // cell width
-                                //var cellwidth = Math.ceil(reactUtils.getSize(currCell.children[0]).width/currCell.colSpan);
-                                var cellwidth = Math.ceil((currCell.__orb._textWidth / currCell.__orb._colSpan) + currCell.__orb._paddingLeft + currCell.__orb._paddingRight + currCell.__orb._borderLeftWidth + currCell.__orb._borderRightWidth);
-                                // whether current cell spans vertically to the last row
-                                var rowsSpan = currCell.__orb._rowSpan > 1 && currCell.__orb._rowSpan >= tbl.rows.length - rowIndex;
-
-                                // if current cell spans over more than one column, add its width (its) 'colSpan' number of times
-                                for (var cspan = 0; cspan < currCell.__orb._colSpan; cspan++) {
-                                    // If cell span over more than 1 row: insert its width into widthArray at arrayIndex
-                                    // Else: either expand widthArray if necessary or replace the width if its smaller than current cell width
-
-                                    currWidth = widthArray[arrayIndex];
-                                    // skip inhibited widths (width that belongs to an upper cell than spans vertically to current row)
-                                    while (currWidth && currWidth.inhibit > 0) {
-                                        currWidth.inhibit--;
-                                        arrayIndex++;
-                                        currWidth = widthArray[arrayIndex];
-                                    }
-
-                                    if (widthArray.length - 1 < arrayIndex) {
-                                        widthArray.push({
-                                            width: cellwidth
-                                        });
-                                    } else if (cellwidth > widthArray[arrayIndex].width) {
-                                        widthArray[arrayIndex].width = cellwidth;
-                                    }
-
-                                    widthArray[arrayIndex].inhibit = currCell.__orb._rowSpan - 1;
-
-                                    // increment widthArray index
-                                    arrayIndex++;
-                                }
-                            }
-                        }
-
-                        // decrement inhibited state of all widths unsed in widthArray (not reached by current row cells)
-                        currWidth = widthArray[arrayIndex];
-                        while (currWidth) {
-                            if (currWidth.inhibit > 0) {
-                                currWidth.inhibit--;
-                            }
-                            arrayIndex++;
-                            currWidth = widthArray[arrayIndex];
+                    this.pgridwidget = this.props.pgridwidget;
+                    this.pgrid = this.pgridwidget.pgrid;
+                    return {};
+                },
+                sort: function(axetype, field) {
+                    this.pgridwidget.sort(axetype, field);
+                    this.setProps({});
+                },
+                moveButton: function(button, newAxeType, position) {
+                    if (this.pgridwidget.moveField(button.props.field.name, button.props.axetype, newAxeType, position)) {
+                        this.setProps({});
+                    }
+                },
+                applyFilter: function(fieldname, operator, term, staticValue, excludeStatic) {
+                    this.pgridwidget.applyFilter(fieldname, operator, term, staticValue, excludeStatic);
+                    this.setProps({});
+                },
+                registerThemeChanged: function(compCallback) {
+                    if (compCallback) {
+                        themeChangeCallbacks[this.id].push(compCallback);
+                    }
+                },
+                unregisterThemeChanged: function(compCallback) {
+                    var i;
+                    if (compCallback && (i = themeChangeCallbacks[this.id].indexOf(compCallback)) >= 0) {
+                        themeChangeCallbacks[this.id].splice(i, 1);
+                    }
+                },
+                changeTheme: function(newTheme) {
+                    if (this.pgridwidget.pgrid.config.setTheme(newTheme)) {
+                        // notify self/sub-components of the theme change
+                        for (var i = 0; i < themeChangeCallbacks[this.id].length; i++) {
+                            themeChangeCallbacks[this.id][i]();
                         }
                     }
+                },
+                updateClasses: function() {
+                    var thisnode = this.getDOMNode();
+                    var classes = this.pgridwidget.pgrid.config.theme.getPivotClasses();
+                    thisnode.className = classes.container;
+                    thisnode.children[1].className = classes.table;
+                },
+                componentDidUpdate: function() {
+                    this.synchronizeWidths();
+                },
+                componentDidMount: function() {
+                    var fontInfos = domUtils.getStyle(this.getDOMNode(), ['font-family', 'font-size'], true);
+                    this.fontStyle = {
+                        fontFamily: fontInfos[0],
+                        fontSize: fontInfos[1]
+                    };
 
-                    // set widthArray to the tblObject
-                    tblObject.size.width = 0;
-                    tblObject.widthArray = widthArray.map(function(item, index) {
-                        tblObject.size.width += item.width;
-                        return item.width;
+                    this.synchronizeWidths();
+                },
+                synchronizeWidths: function() {
+                    var chartStyle = comps.SizingManager.synchronizeWidths(this);
+                    chartStyle.fontFamily = this.fontStyle.fontFamily;
+                    chartStyle.fontSize = this.fontStyle.fontSize;
+
+                    this.refs.chart.setState({
+                        canRender: true,
+                        chartStyle: chartStyle
                     });
-                }
-            }
+                },
+                render: function() {
 
-            function setTableWidths(tblObject, newWidthArray) {
-                if (tblObject && tblObject.node) {
+                    var self = this;
 
-                    // reset table width
-                    (tblObject.size = (tblObject.size || {})).width = 0;
+                    var config = this.pgridwidget.pgrid.config;
+                    var Toolbar = comps.Toolbar;
+                    var UpperButtons = comps.PivotTableUpperButtons;
+                    var ColumnButtons = comps.PivotTableColumnButtons;
+                    var RowButtons = comps.PivotTableRowButtons;
+                    var Chart = comps.Chart;
 
-                    var tbl = tblObject.node;
+                    var classes = config.theme.getPivotClasses();
 
-                    // for each row, set its cells width
-                    for (var rowIndex = 0; rowIndex < tbl.rows.length; rowIndex++) {
-
-                        // current row
-                        var currRow = tbl.rows[rowIndex];
-                        // index in newWidthArray
-                        var arrayIndex = 0;
-                        var currWidth = null;
-
-                        // set width of each cell
-                        for (var cellIndex = 0; cellIndex < currRow.cells.length; cellIndex++) {
-
-                            // current cell
-                            var currCell = currRow.cells[cellIndex];
-                            if (currCell.__orb._visible) {
-                                // cell width
-                                var newCellWidth = 0;
-                                // whether current cell spans vertically more than 1 row
-                                var rowsSpan = currCell.__orb._rowSpan > 1 && rowIndex < tbl.rows.length - 1;
-
-                                // current cell width is the sum of (its) "colspan" items in newWidthArray starting at 'arrayIndex'
-                                // 'arrayIndex' should be incremented by an amount equal to current cell 'colspan' but should also skip 'inhibited' cells
-                                for (var cspan = 0; cspan < currCell.__orb._colSpan; cspan++) {
-                                    currWidth = newWidthArray[arrayIndex];
-                                    // skip inhibited widths (width that belongs to an upper cell than spans vertically to current row)
-                                    while (currWidth && currWidth.inhibit > 0) {
-                                        currWidth.inhibit--;
-                                        arrayIndex++;
-                                        currWidth = newWidthArray[arrayIndex];
-                                    }
-
-                                    if (currWidth) {
-                                        // add width of cells participating in the span
-                                        newCellWidth += currWidth.width;
-                                        // if current cell spans vertically more than 1 row, mark its width as inhibited for all cells participating in this span
-                                        if (rowsSpan) {
-                                            currWidth.inhibit = currCell.__orb._rowSpan - 1;
-                                        }
-
-                                        // advance newWidthArray index
-                                        arrayIndex++;
-                                    }
-                                }
-
-                                currCell.children[0].style.width = newCellWidth + 'px';
-
-                                // set table width (only in first iteration)
-                                if (rowIndex === 0) {
-                                    var outerCellWidth = 0;
-                                    if (currCell.__orb) {
-                                        outerCellWidth = currCell.__orb._colSpan * (Math.ceil(currCell.__orb._paddingLeft + currCell.__orb._paddingRight + currCell.__orb._borderLeftWidth + currCell.__orb._borderRightWidth));
-                                    }
-                                    tblObject.size.width += newCellWidth + outerCellWidth;
-                                }
-                            }
-                        }
-
-                        // decrement inhibited state of all widths unsed in newWidthArray (not reached by current row cells)
-                        currWidth = newWidthArray[arrayIndex];
-                        while (currWidth) {
-                            if (currWidth.inhibit > 0) {
-                                currWidth.inhibit--;
-                            }
-                            arrayIndex++;
-                            currWidth = newWidthArray[arrayIndex];
-                        }
+                    var tblStyle = {};
+                    if (config.width) {
+                        tblStyle.width = config.width;
                     }
-                }
-            }
-
-            function clearTableWidths(tbl) {
-                if (tbl) {
-                    for (var rowIndex = 0; rowIndex < tbl.rows.length; rowIndex++) {
-                        var row = tbl.rows[rowIndex];
-                        for (var cellIndex = 0; cellIndex < row.cells.length; cellIndex++) {
-                            row.cells[cellIndex].children[0].style.width = '';
-                        }
+                    if (config.height) {
+                        tblStyle.height = config.height;
                     }
-                    tbl.style.width = '';
+
+                    return (React.createElement("div", {
+                            className: classes.container,
+                            style: tblStyle,
+                            ref: "pivot"
+                        },
+                        React.createElement("table", {
+                                id: 'tbl-' + self.id,
+                                ref: "pivotWrapperTable",
+                                className: classes.table
+                            },
+                            React.createElement("colgroup", null,
+                                React.createElement("col", {
+                                    ref: "column1"
+                                }),
+                                React.createElement("col", {
+                                    ref: "column2"
+                                })
+                            ),
+                            React.createElement("tbody", null,
+                                React.createElement("tr", {
+                                        ref: "upperButtons"
+                                    },
+                                    React.createElement("td", {
+                                            colSpan: "2"
+                                        },
+                                        React.createElement(UpperButtons, {
+                                            pivotTableComp: self
+                                        })
+                                    )
+                                ),
+                                React.createElement("tr", {
+                                        ref: "colButtons"
+                                    },
+                                    React.createElement("td", null),
+                                    React.createElement("td", {
+                                            style: {
+                                                padding: '11px 4px !important'
+                                            }
+                                        },
+                                        React.createElement(ColumnButtons, {
+                                            pivotTableComp: self
+                                        })
+                                    )
+                                ),
+                                React.createElement("tr", null,
+                                    React.createElement("td", {
+                                            style: {
+                                                position: 'relative'
+                                            }
+                                        },
+                                        React.createElement(RowButtons, {
+                                            pivotTableComp: self,
+                                            ref: "rowButtons"
+                                        })
+                                    ),
+                                    React.createElement("td", null,
+                                        React.createElement(Chart, {
+                                            pivotTableComp: self,
+                                            displayMode: config.displayMode,
+                                            ref: "chart"
+                                        })
+                                    )
+                                )
+                            )
+                        )
+                    ));
                 }
-            }
+            });
 
             module.exports.PivotRow = react.createClass({
                 render: function() {
@@ -3913,10 +4120,10 @@
                     } else {
                         var cellContentNode = this.refs.cellContent.getDOMNode();
 
-                        var text = node.textContent;
                         var propList = [];
                         var retPaddingLeft = _paddingLeft == null;
                         var retBorderLeft = !this.props.leftmost && _borderLeft == null;
+                        var text = node.textContent || node.innerText;
 
                         if (retPaddingLeft) {
                             propList.push('padding-left');
@@ -3927,7 +4134,7 @@
                         }
 
                         if (propList.length > 0) {
-                            var nodeStyle = reactUtils.getStyle(node, propList, true);
+                            var nodeStyle = domUtils.getStyle(node, propList, true);
 
                             if (retPaddingLeft) {
                                 _paddingLeft = parseFloat(nodeStyle[0]);
@@ -3938,10 +4145,13 @@
                             }
                         }
 
-                        reactUtils.removeClass(node, 'cell-hidden');
+                        domUtils.removeClass(node, 'cell-hidden');
 
                         node.__orb._visible = true;
-                        node.__orb._textWidth = reactUtils.getSize(cellContentNode).width;
+                        if (text != node.__orb._lastText || !node.__orb._textWidth) {
+                            node.__orb._lastText = text;
+                            node.__orb._textWidth = domUtils.getSize(cellContentNode).width;
+                        }
                         node.__orb._colSpan = this.props.cell.hspan(true) || 1;
                         node.__orb._rowSpan = this.props.cell.vspan(true) || 1;
                         node.__orb._paddingLeft = _paddingLeft;
@@ -4144,7 +4354,7 @@
                 }
 
                 function getDropTarget() {
-                    return reactUtils.forEach(_dropTargets, function(target) {
+                    return domUtils.forEach(_dropTargets, function(target) {
                         if (target.component.state.isover) {
                             return target;
                         }
@@ -4152,7 +4362,7 @@
                 }
 
                 function getDropIndicator() {
-                    return reactUtils.forEach(_dropIndicators, function(indicator) {
+                    return domUtils.forEach(_dropIndicators, function(indicator) {
                         if (indicator.component.state.isover) {
                             return indicator;
                         }
@@ -4233,7 +4443,7 @@
                             var dragNodeRect = _dragNode.getBoundingClientRect();
                             var foundTarget;
 
-                            reactUtils.forEach(_dropTargets, function(target) {
+                            domUtils.forEach(_dropTargets, function(target) {
                                 if (!foundTarget) {
                                     var tnodeRect = target.component.getDOMNode().getBoundingClientRect();
                                     var isOverlap = doElementsOverlap(dragNodeRect, tnodeRect);
@@ -4248,7 +4458,7 @@
                                 setCurrDropTarget(foundTarget, function() {
                                     var foundIndicator = null;
 
-                                    reactUtils.forEach(_dropIndicators, function(indicator, index) {
+                                    domUtils.forEach(_dropIndicators, function(indicator, index) {
                                         if (!foundIndicator) {
                                             var elementOwnIndicator = indicator.component.props.axetype === _currDragElement.props.axetype &&
                                                 indicator.component.props.position === _currDragElement.props.position;
@@ -4311,7 +4521,7 @@
                     }
                 },
                 render: function() {
-                    var classname = 'drp-indic';
+                    var classname = 'drp-indic' + (this.props.isVertical ? '-vertical' : '');
 
                     if (this.props.isFirst) {
                         classname += ' drp-indic-first';
@@ -4418,6 +4628,80 @@
                 }
             });
 
+            var dtid = 0;
+
+            module.exports.DropTargetVertical = react.createClass({
+                getInitialState: function() {
+                    this.dtid = ++dtid;
+                    return {
+                        isover: false
+                    };
+                },
+                componentDidMount: function() {
+                    dragManager.registerTarget(this, this.props.axetype, this.onDragOver, this.onDragEnd);
+                },
+                componentWillUnmount: function() {
+                    dragManager.unregisterTarget(this);
+                },
+                onDragOver: function(callback) {
+                    if (this.isMounted()) {
+                        this.setState({
+                            isover: true
+                        }, callback);
+                    } else if (callback) {
+                        callback();
+                    }
+                },
+                onDragEnd: function(callback) {
+                    if (this.isMounted()) {
+                        this.setState({
+                            isover: false
+                        }, callback);
+                    } else if (callback) {
+                        callback();
+                    }
+                },
+                render: function() {
+                    var self = this;
+                    var DropIndicator = module.exports.DropIndicator;
+
+                    var buttons = this.props.buttons.map(function(button, index) {
+                        var currButton = [
+                            React.createElement("tr", null, React.createElement("td", null, React.createElement(DropIndicator, {
+                                isFirst: index === 0,
+                                position: index,
+                                axetype: self.props.axetype,
+                                isVertical: true
+                            }))),
+                            React.createElement("tr", null, React.createElement("td", null, button))
+                        ];
+
+                        if (index == self.props.buttons.length - 1) {
+                            currButton.push(
+                                React.createElement("tr", null, React.createElement("td", null, React.createElement(DropIndicator, {
+                                    isLast: true,
+                                    position: null,
+                                    axetype: self.props.axetype,
+                                    isVertical: true
+                                })))
+                            );
+                        }
+
+                        return currButton;
+                    });
+
+                    return React.createElement("div", {
+                            className: 'drp-trgt-vertical' + (this.state.isover ? ' drp-trgt-over' : '') + (buttons.length === 0 ? ' drp-trgt-vertical-empty' : '')
+                        },
+                        React.createElement("table", null,
+                            React.createElement("tbody", null,
+                                buttons
+                            )
+                        )
+                    );
+                }
+            });
+
             var pbid = 0;
 
             module.exports.PivotButton = react.createClass({
@@ -4444,7 +4728,7 @@
                     if (e.button !== 0) return;
 
                     var filterButton = this.refs.filterButton.getDOMNode();
-                    var filterButtonPos = reactUtils.getOffset(filterButton);
+                    var filterButtonPos = domUtils.getOffset(filterButton);
                     var filterContainer = document.createElement('div');
 
                     var filterPanelFactory = React.createFactory(comps.FilterPanel);
@@ -4461,19 +4745,19 @@
                     React.render(filterPanel, filterContainer);
 
                     // prevent event bubbling (to prevent text selection while dragging for example)
-                    e.stopPropagation();
-                    e.preventDefault();
+                    utils.stopPropagation(e);
+                    utils.preventDefault(e);
                 },
                 componentDidUpdate: function() {
                     if (this.props.pivotTableComp.pgrid.config.canMoveFields) {
                         if (!this.state.mousedown) {
                             // mouse not down, don't care about mouse up/move events.
                             dragManager.setDragElement(null);
-                            document.removeEventListener('mousemove', this.onMouseMove);
+                            utils.removeEventListener(document, 'mousemove', this.onMouseMove);
                         } else if (this.state.mousedown) {
                             // mouse down, interested by mouse up/move events.
                             dragManager.setDragElement(this);
-                            document.addEventListener('mousemove', this.onMouseMove);
+                            utils.addEventListener(document, 'mousemove', this.onMouseMove);
                         }
                     }
                 },
@@ -4482,7 +4766,7 @@
                 },
                 componentWillUnmount: function() {
                     this.props.pivotTableComp.unregisterThemeChanged(this.updateClasses);
-                    document.removeEventListener('mousemove', this.onMouseMove);
+                    utils.removeEventListener(document, 'mousemove', this.onMouseMove);
                 },
                 onMouseDown: function(e) {
                     // drag/sort with left mouse button
@@ -4492,25 +4776,26 @@
                         this.props.pivotTableComp.toggleFieldExpansion(this.props.axetype, this.props.field);
                     } else {
 
-                        var thispos = reactUtils.getOffset(this.getDOMNode());
+                        var thispos = domUtils.getOffset(this.getDOMNode());
+                        var mousePageXY = utils.getMousePageXY(e);
 
                         // inform mousedown, save start pos
                         this.setState({
                             mousedown: true,
                             mouseoffset: {
-                                x: thispos.x - e.pageX,
-                                y: thispos.y - e.pageY,
+                                x: thispos.x - mousePageXY.pageX,
+                                y: thispos.y - mousePageXY.pageY
                             },
                             startpos: {
-                                x: e.pageX,
-                                y: e.pageY
+                                x: mousePageXY.pageX,
+                                y: mousePageXY.pageY
                             }
                         });
                     }
 
                     // prevent event bubbling (to prevent text selection while dragging for example)
-                    e.stopPropagation();
-                    e.preventDefault();
+                    utils.stopPropagation(e);
+                    utils.preventDefault(e);
                 },
                 onMouseUp: function(e) {
 
@@ -4536,27 +4821,31 @@
                     if (!this.props.pivotTableComp.pgrid.config.canMoveFields || !this.state.mousedown) return;
 
                     var size = null;
+                    var mousePageXY = utils.getMousePageXY(e);
+
                     if (!this.state.dragging) {
-                        size = reactUtils.getSize(this.getDOMNode());
+                        size = domUtils.getSize(this.getDOMNode());
                     } else {
                         size = this.state.size;
                     }
 
                     var newpos = {
-                        x: e.pageX + this.state.mouseoffset.x,
-                        y: e.pageY + this.state.mouseoffset.y
+                        x: mousePageXY.pageX + this.state.mouseoffset.x,
+                        y: mousePageXY.pageY + this.state.mouseoffset.y
                     };
 
-                    this.setState({
-                        dragging: true,
-                        size: size,
-                        pos: newpos
-                    });
+                    if (!this.state.dragging || newpos.x != this.state.pos.x || newpos.y != this.state.pos.y) {
+                        this.setState({
+                            dragging: true,
+                            size: size,
+                            pos: newpos
+                        });
 
-                    dragManager.elementMoved();
+                        dragManager.elementMoved();
+                    }
 
-                    e.stopPropagation();
-                    e.preventDefault();
+                    utils.stopPropagation(e);
+                    utils.preventDefault(e);
                 },
                 updateClasses: function() {
                     this.getDOMNode().className = this.props.pivotTableComp.pgrid.config.theme.getButtonClasses().pivotButton;
@@ -4724,6 +5013,7 @@
                     var self = this;
                     var PivotButton = comps.PivotButton;
                     var DropTarget = comps.DropTarget;
+                    var DropTargetVertical = comps.DropTargetVertical;
 
                     var config = this.props.pivotTableComp.pgridwidget.pgrid.config;
 
@@ -4737,10 +5027,17 @@
                         });
                     });
 
-                    return React.createElement(DropTarget, {
-                        buttons: rowButtons,
-                        axetype: axe.Type.ROWS
-                    });
+                    if (config.displayMode.isChart()) {
+                        return React.createElement(DropTargetVertical, {
+                            buttons: rowButtons,
+                            axetype: axe.Type.ROWS
+                        });
+                    } else {
+                        return React.createElement(DropTarget, {
+                            buttons: rowButtons,
+                            axetype: axe.Type.ROWS
+                        });
+                    }
                 }
             });
 
@@ -4768,7 +5065,6 @@
 
                     return React.createElement("div", {
                             className: 'inner-table-container' + cntrClass,
-                            ref: "colHeadersContainer",
                             onWheel: this.props.pivotTableComp.onWheel
                         },
                         React.createElement("table", {
@@ -4820,7 +5116,6 @@
 
                     return React.createElement("div", {
                             className: 'inner-table-container' + cntrClass,
-                            ref: "rowHeadersContainer",
                             onWheel: this.props.pivotTableComp.onWheel
                         },
                         React.createElement("table", {
@@ -4858,12 +5153,17 @@
                         });
                     });
 
-                    return React.createElement("table", {
-                            className: "inner-table"
+                    return React.createElement("div", {
+                            className: "inner-table-container data-cntr",
+                            onWheel: this.props.pivotTableComp.onWheel
                         },
-                        React.createElement("colgroup", null),
-                        React.createElement("tbody", null,
-                            dataCells
+                        React.createElement("table", {
+                                className: "inner-table"
+                            },
+                            React.createElement("colgroup", null),
+                            React.createElement("tbody", null,
+                                dataCells
+                            )
                         )
                     );
                 }
@@ -4886,43 +5186,44 @@
                 componentDidUpdate: function() {
                     if (!this.state.mousedown) {
                         // mouse not down, don't care about mouse up/move events.
-                        document.removeEventListener('mousemove', this.onMouseMove);
-                        document.removeEventListener('mouseup', this.onMouseUp);
+                        utils.removeEventListener(document, 'mousemove', this.onMouseMove);
+                        utils.removeEventListener(document, 'mouseup', this.onMouseUp);
                     } else if (this.state.mousedown) {
                         // mouse down, interested by mouse up/move events.
-                        document.addEventListener('mousemove', this.onMouseMove);
-                        document.addEventListener('mouseup', this.onMouseUp);
+                        utils.addEventListener(document, 'mousemove', this.onMouseMove);
+                        utils.addEventListener(document, 'mouseup', this.onMouseUp);
                     }
                 },
                 componentWillUnmount: function() {
-                    document.removeEventListener('mousemove', this.onMouseMove);
-                    document.removeEventListener('mouseup', this.onMouseUp);
+                    utils.removeEventListener(document, 'mousemove', this.onMouseMove);
+                    utils.removeEventListener(document, 'mouseup', this.onMouseUp);
                 },
                 onMouseDown: function(e) {
                     // drag with left mouse button
                     if (e.button !== 0) return;
 
                     var thumbElem = this.refs.scrollThumb.getDOMNode();
-                    var thumbposInParent = reactUtils.getParentOffset(thumbElem);
+                    var thumbposInParent = domUtils.getParentOffset(thumbElem);
+                    var mousePageXY = utils.getMousePageXY(e);
 
-                    reactUtils.addClass(thumbElem, 'orb-scrollthumb-hover');
+                    domUtils.addClass(thumbElem, 'orb-scrollthumb-hover');
 
                     // inform mousedown, save start pos
                     this.setState({
                         mousedown: true,
-                        mouseoffset: e[this.mousePosProp],
+                        mouseoffset: mousePageXY[this.mousePosProp],
                         thumbOffset: thumbposInParent[this.posProp]
                     });
 
                     // prevent event bubbling (to prevent text selection while dragging for example)
-                    e.stopPropagation();
-                    e.preventDefault();
+                    utils.stopPropagation(e);
+                    utils.preventDefault(e);
                 },
                 onMouseUp: function() {
 
                     if (this.state.mousedown) {
                         var thumbElem = this.refs.scrollThumb.getDOMNode();
-                        reactUtils.removeClass(thumbElem, 'orb-scrollthumb-hover');
+                        domUtils.removeClass(thumbElem, 'orb-scrollthumb-hover');
                     }
 
                     this.setState({
@@ -4934,19 +5235,20 @@
                     // if the mouse is not down while moving, return (no drag)
                     if (!this.state.mousedown) return;
 
-                    e.stopPropagation();
-                    e.preventDefault();
+                    utils.stopPropagation(e);
+                    utils.preventDefault(e);
 
-                    var amount = e[this.mousePosProp] - this.state.mouseoffset;
-                    this.state.mouseoffset = e[this.mousePosProp];
+                    var mousePageXY = utils.getMousePageXY(e);
+                    var amount = mousePageXY[this.mousePosProp] - this.state.mouseoffset;
+                    this.state.mouseoffset = mousePageXY[this.mousePosProp];
 
                     this.scroll(amount);
                 },
                 getScrollSize: function() {
                     if (this.scrollClient != null) {
-                        return reactUtils.getSize(this.scrollClient)[this.sizeProp];
+                        return domUtils.getSize(this.scrollClient)[this.sizeProp];
                     } else {
-                        return reactUtils.getSize(this.getDOMNode())[this.sizeProp];
+                        return domUtils.getSize(this.getDOMNode())[this.sizeProp];
                     }
                 },
                 setScrollClient: function(scrollClient, scrollCallback) {
@@ -4961,8 +5263,8 @@
                     if (this.scrollClient) {
                         var scrolledElement = this.scrollClient.children[0];
 
-                        var clientSize = reactUtils.getSize(this.scrollClient);
-                        var elementSize = reactUtils.getSize(scrolledElement);
+                        var clientSize = domUtils.getSize(this.scrollClient);
+                        var elementSize = domUtils.getSize(scrolledElement);
 
                         var scrollBarContainerSize = this.getScrollSize();
                         var newSize = clientSize[this.sizeProp] >= elementSize[this.sizeProp] ? 0 : (clientSize[this.sizeProp] / elementSize[this.sizeProp]) * scrollBarContainerSize;
@@ -4986,19 +5288,21 @@
                         if (newOffset < 0) newOffset = 0;
                         if (newOffset > maxOffset) newOffset = maxOffset;
 
-                        this.setState({
-                                thumbOffset: newOffset
-                            },
-                            this.scrollEvent.raise
-                        );
-                        return true;
+                        if (this.state.thumbOffset != newOffset) {
+                            this.setState({
+                                    thumbOffset: newOffset
+                                },
+                                this.scrollEvent.raise
+                            );
+                            return true;
+                        }
                     }
                     return false;
                 },
                 onWheel: function(e) {
                     this.scroll(e.deltaY, e.deltaMode);
-                    e.stopPropagation();
-                    e.preventDefault();
+                    utils.stopPropagation(e);
+                    utils.preventDefault(e);
                 },
                 render: function() {
                     var self = this;
@@ -5012,7 +5316,7 @@
                     var thisStyle = {};
                     thisStyle[this.sizeProp] = this.state.containerSize;
 
-                    var thumbClass = "orb-scrollthumb " + this.props.pivotTableComp.pgrid.config.theme.getButtonClasses().scrollBar;
+                    var thumbClass = 'orb-scrollthumb ' + this.props.pivotTableComp.pgrid.config.theme.getButtonClasses().scrollBar;
 
                     var scrollThumb = this.state.size <= 0 ?
                         null :
@@ -5062,6 +5366,77 @@
                 cssClass: 'orb-v-scrollbar'
             });
 
+            module.exports.Chart = react.createClass({
+                getInitialState: function() {
+                    return {
+                        canRender: false
+                    };
+                },
+                canRender: function() {
+                    return this.state.canRender &&
+                        typeof this.props.displayMode.chartType === 'string' &&
+                        typeof google.visualization[this.props.displayMode.chartType] === 'function';
+                },
+                drawChart: function() {
+                    if (this.canRender()) {
+                        var chartData = this.props.pivotTableComp.pgridwidget.pgrid.getChartData(),
+                            data;
+
+                        if (chartData) {
+                            data = new google.visualization.DataTable();
+
+                            data.addColumn('string', chartData.hAxisLabel);
+                            for (var ri = 0; ri < chartData.colNames.length; ri++) {
+                                data.addColumn('number', chartData.colNames[ri]);
+                            }
+
+                            data.addRows(chartData.dataTable);
+
+                            var options = {
+                                title: chartData.title,
+                                //isStacked: true,
+                                //fontName: this.state.chartStyle.fontFamily,
+                                //fontSize: parseFloat(this.state.chartStyle.fontSize),
+                                hAxis: {
+                                    title: chartData.hAxisLabel
+                                },
+                                vAxis: {
+                                    title: chartData.vAxisLabel
+                                }
+                            };
+                        } else {
+                            data = google.visualization.arrayToDataTable([
+                                ['', {
+                                    role: 'annotation'
+                                }],
+                                ['', '']
+                            ]);
+                        }
+
+                        if (typeof google.visualization[this.props.displayMode.chartType] === 'function') {
+                            var chart = new google.visualization[this.props.displayMode.chartType](this.getDOMNode());
+                            chart.draw(data, options);
+                        }
+                    }
+
+                },
+                componentDidMount: function() {
+                    this.drawChart();
+                },
+                componentDidUpdate: function() {
+                    this.drawChart();
+                },
+                render: function() {
+                    if (this.canRender()) {
+                        return React.createElement("div", {
+                            className: "chart",
+                            style: this.state.chartStyle
+                        });
+                    }
+                    return null;
+                }
+            });
+
             module.exports.FilterPanel = react.createClass({
                 pgridwidget: null,
                 values: null,
@@ -5081,7 +5456,7 @@
                 },
                 onMouseDown: function(e) {
                     var container = this.getDOMNode().parentNode;
-                    var target = e.target;
+                    var target = e.target || e.srcElement;
                     while (target != null) {
                         if (target == container) {
                             return true;
@@ -5093,12 +5468,12 @@
                 },
                 onMouseWheel: function(e) {
                     var valuesTable = this.refs.valuesTable.getDOMNode();
-                    var target = e.target;
+                    var target = e.target || e.srcElement;
                     while (target != null) {
                         if (target == valuesTable) {
                             if (valuesTable.scrollHeight <= valuesTable.clientHeight) {
-                                e.stopPropagation();
-                                e.preventDefault();
+                                utils.stopPropagation(e);
+                                utils.preventDefault(e);
                             }
                             return;
                         }
@@ -5108,17 +5483,17 @@
                     this.destroy();
                 },
                 componentWillMount: function() {
-                    document.addEventListener('mousedown', this.onMouseDown);
-                    document.addEventListener('wheel', this.onMouseWheel);
-                    window.addEventListener('resize', this.destroy);
+                    utils.addEventListener(document, 'mousedown', this.onMouseDown);
+                    utils.addEventListener(document, 'wheel', this.onMouseWheel);
+                    utils.addEventListener(window, 'resize', this.destroy);
                 },
                 componentDidMount: function() {
                     this.filterManager.init(this.getDOMNode());
                 },
                 componentWillUnmount: function() {
-                    document.removeEventListener('mousedown', this.onMouseDown);
-                    document.removeEventListener('wheel', this.onMouseWheel);
-                    window.removeEventListener('resize', this.destroy);
+                    utils.removeEventListener(document, 'mousedown', this.onMouseDown);
+                    utils.removeEventListener(document, 'wheel', this.onMouseWheel);
+                    utils.removeEventListener(window, 'resize', this.destroy);
                 },
                 render: function() {
                     var Dropdown = comps.Dropdown;
@@ -5148,20 +5523,17 @@
                     }
 
                     addCheckboxRow(filtering.ALL, '(Show All)');
-                    if (this.values.containsBlank) {
-                        addCheckboxRow(filtering.BLANK, '(Blank)');
-                    }
 
                     for (var i = 0; i < this.values.length; i++) {
-                        addCheckboxRow(this.values[i]);
+                        if (this.values[i] != null) {
+                            addCheckboxRow(this.values[i]);
+                        } else {
+                            addCheckboxRow(filtering.BLANK, '(Blank)');
+                        }
                     }
 
                     var buttonClass = this.props.pivotTableComp.pgrid.config.theme.getButtonClasses().orbButton;
-                    var pivotStyle = window.getComputedStyle(this.props.pivotTableComp.getDOMNode(), null);
-                    var style = {
-                        fontFamily: pivotStyle.getPropertyValue('font-family'),
-                        fontSize: pivotStyle.getPropertyValue('font-size')
-                    };
+                    var style = this.props.pivotTableComp.fontStyle;
 
                     var currentFilter = this.pgridwidget.pgrid.getFieldFilter(this.props.field);
 
@@ -5311,6 +5683,7 @@
                     }
 
                     elems.allCheckbox = elems.checkboxes[filtering.ALL];
+                    elems.blanckCheckbox = elems.checkboxes[filtering.BLANK];
                     elems.addCheckbox = null;
                     elems.enableRegexButton = elems.filterContainer.rows[0].cells[1];
 
@@ -5372,16 +5745,16 @@
                 function addEventListeners() {
                     self.toggleRegexpButtonVisibility();
 
-                    elems.filterContainer.addEventListener('click', self.valueChecked);
-                    elems.searchBox.addEventListener('keyup', self.searchChanged);
+                    utils.addEventListener(elems.filterContainer, 'click', self.valueChecked);
+                    utils.addEventListener(elems.searchBox, 'keyup', self.searchChanged);
 
-                    elems.clearSearchButton.addEventListener('click', self.clearSearchBox);
+                    utils.addEventListener(elems.clearSearchButton, 'click', self.clearSearchBox);
 
-                    elems.okButton.addEventListener('click', function() {
+                    utils.addEventListener(elems.okButton, 'click', function() {
                         var checkedObj = self.getCheckedValues();
                         reactComp.onFilter(operator.name, operator.regexpSupported && isSearchMode && isRegexMode ? new RegExp(lastSearchTerm, 'i') : lastSearchTerm, checkedObj.values, checkedObj.toExclude);
                     });
-                    elems.cancelButton.addEventListener('click', function() {
+                    utils.addEventListener(elems.cancelButton, 'click', function() {
                         reactComp.destroy();
                     });
                 }
@@ -5399,17 +5772,19 @@
 
                     this.resizeMouseDown = function(e) {
                         // drag/sort with left mouse button
-                        if (e.button !== 0) return;
+                        if (utils.getEventButton(e) !== 0) return;
+
+                        var mousePageXY = utils.getMousePageXY(e);
 
                         isMouseDown = true;
                         document.body.style.cursor = 'se-resize';
 
-                        mousedownpos.x = e.pageX;
-                        mousedownpos.y = e.pageY;
+                        mousedownpos.x = mousePageXY.pageX;
+                        mousedownpos.y = mousePageXY.pageY;
 
                         // prevent event bubbling (to prevent text selection while dragging for example)
-                        e.stopPropagation();
-                        e.preventDefault();
+                        utils.stopPropagation(e);
+                        utils.preventDefault(e);
                     };
 
                     this.resizeMouseUp = function() {
@@ -5422,23 +5797,25 @@
                         // if the mouse is not down while moving, return (no drag)
                         if (!isMouseDown) return;
 
+                        var mousePageXY = utils.getMousePageXY(e);
+
                         var resizeGripSize = resizeGripElem.getBoundingClientRect();
                         var outerContainerSize = outerContainerElem.getBoundingClientRect();
-                        var valuesTableSize = valuesTableElem.getBoundingClientRect();
+                        var valuesTableSize = valuesTableElem.tBodies[0].getBoundingClientRect();
 
                         var outerContainerWidth = outerContainerSize.right - outerContainerSize.left;
                         var outerContainerHeight = outerContainerSize.bottom - outerContainerSize.top;
 
                         var offset = {
-                            x: outerContainerWidth <= minContainerWidth && e.pageX < resizeGripSize.left ? 0 : e.pageX - mousedownpos.x,
-                            y: outerContainerHeight <= minContainerHeight && e.pageY < resizeGripSize.top ? 0 : e.pageY - mousedownpos.y
+                            x: outerContainerWidth <= minContainerWidth && mousePageXY.pageX < resizeGripSize.left ? 0 : mousePageXY.pageX - mousedownpos.x,
+                            y: outerContainerHeight <= minContainerHeight && mousePageXY.pageY < resizeGripSize.top ? 0 : mousePageXY.pageY - mousedownpos.y
                         };
 
                         var newContainerWidth = outerContainerWidth + offset.x;
                         var newContainerHeight = outerContainerHeight + offset.y;
 
-                        mousedownpos.x = e.pageX;
-                        mousedownpos.y = e.pageY;
+                        mousedownpos.x = mousePageXY.pageX;
+                        mousedownpos.y = mousePageXY.pageY;
 
                         if (newContainerWidth >= minContainerWidth) {
                             outerContainerElem.style.width = newContainerWidth + 'px';
@@ -5446,16 +5823,16 @@
 
                         if (newContainerHeight >= minContainerHeight) {
                             outerContainerElem.style.height = newContainerHeight + 'px';
-                            valuesTableElem.style.height = (valuesTableSize.bottom - valuesTableSize.top + offset.y) + 'px';
+                            valuesTableElem.tBodies[0].style.height = (valuesTableSize.bottom - valuesTableSize.top + offset.y) + 'px';
                         }
 
-                        e.stopPropagation();
-                        e.preventDefault();
+                        utils.stopPropagation(e);
+                        utils.preventDefault(e);
                     };
 
-                    resizeGripElem.addEventListener('mousedown', this.resizeMouseDown);
-                    document.addEventListener('mouseup', this.resizeMouseUp);
-                    document.addEventListener('mousemove', this.resizeMouseMove);
+                    utils.addEventListener(resizeGripElem, 'mousedown', this.resizeMouseDown);
+                    utils.addEventListener(document, 'mouseup', this.resizeMouseUp);
+                    utils.addEventListener(document, 'mousemove', this.resizeMouseMove);
                 }
 
                 this.clearSearchBox = function() {
@@ -5465,21 +5842,21 @@
 
                 this.toggleRegexpButtonVisibility = function() {
                     if (operator.regexpSupported) {
-                        elems.enableRegexButton.addEventListener('click', self.regexpActiveChanged);
-                        reactUtils.removeClass(elems.enableRegexButton, 'srchtyp-col-hidden');
+                        utils.addEventListener(elems.enableRegexButton, 'click', self.regexpActiveChanged);
+                        domUtils.removeClass(elems.enableRegexButton, 'srchtyp-col-hidden');
 
                     } else {
-                        elems.enableRegexButton.removeEventListener('click', self.regexpActiveChanged);
-                        reactUtils.addClass(elems.enableRegexButton, 'srchtyp-col-hidden');
+                        utils.removeEventListener(elems.enableRegexButton, 'click', self.regexpActiveChanged);
+                        domUtils.addClass(elems.enableRegexButton, 'srchtyp-col-hidden');
                     }
                 };
 
                 this.toggleRegexpButtonState = function() {
                     elems.enableRegexButton.className = elems.enableRegexButton.className.replace('srchtyp-col-active', '');
                     if (isRegexMode) {
-                        reactUtils.addClass(elems.enableRegexButton, 'srchtyp-col-active');
+                        domUtils.addClass(elems.enableRegexButton, 'srchtyp-col-active');
                     } else {
-                        reactUtils.removeClass(elems.enableRegexButton, 'srchtyp-col-active');
+                        domUtils.removeClass(elems.enableRegexButton, 'srchtyp-col-active');
                     }
                 };
 
@@ -5490,7 +5867,7 @@
                 };
 
                 this.valueChecked = function(e) {
-                    var target = e.target;
+                    var target = e.target || e.srcElement;
                     if (target && target.type && target.type === 'checkbox') {
                         if (target == elems.allCheckbox) {
                             self.updateCheckboxes({
@@ -5508,7 +5885,7 @@
                     checkboxVisible(elems.allCheckbox, defaultVisible);
                     for (var i = 0; i < reactComp.values.length; i++) {
                         var val = reactComp.values[i];
-                        var checkbox = elems.checkboxes[val];
+                        var checkbox = val != null ? elems.checkboxes[val] : elems.blanckCheckbox;
                         var visible = !isSearchMode || operator.func(val, opterm);
                         checkboxVisible(checkbox, visible);
                         checkbox.checked = visible;
@@ -5556,7 +5933,7 @@
 
                         for (i = 0; i < reactComp.values.length; i++) {
                             val = reactComp.values[i];
-                            checkbox = elems.checkboxes[val];
+                            checkbox = val != null ? elems.checkboxes[val] : elems.blanckCheckbox;
                             if (checkboxVisible(checkbox)) {
                                 valuesCount++;
                                 if (checkbox.checked) {
@@ -5577,7 +5954,7 @@
 
                             for (i = 0; i < reactComp.values.length; i++) {
                                 val = reactComp.values[i];
-                                checkbox = elems.checkboxes[val];
+                                checkbox = val != null ? elems.checkboxes[val] : elems.blanckCheckbox;
                                 if (checkboxVisible(checkbox)) {
                                     if ((!excludeUnchecked && checkbox.checked) || (excludeUnchecked && !checkbox.checked)) {
                                         staticValue.push(val);
@@ -5605,7 +5982,7 @@
                         );
                     for (var i = 0; i < reactComp.values.length; i++) {
                         var val = reactComp.values[i];
-                        var checkbox = elems.checkboxes[val];
+                        var checkbox = val != null ? elems.checkboxes[val] : elems.blanckCheckbox;
                         if (checkboxVisible(checkbox)) {
                             if (allchecked != null) {
                                 checkbox.checked = allchecked;
@@ -5621,7 +5998,8 @@
                     if (!isSearchMode) {
                         var allchecked = null;
                         for (var i = 0; i < reactComp.values.length; i++) {
-                            var checkbox = elems.checkboxes[reactComp.values[i]];
+                            var val = reactComp.values[i];
+                            var checkbox = val != null ? elems.checkboxes[val] : elems.blanckCheckbox;
                             if (allchecked == null) {
                                 allchecked = checkbox.checked;
                             } else {
@@ -5647,7 +6025,9 @@
                 openOrClose: function(e) {
                     var valueNode = this.refs.valueElement.getDOMNode();
                     var valuesListNode = this.refs.valuesList.getDOMNode();
-                    if (e.target === valueNode && valuesListNode.style.display === 'none') {
+                    var target = e.target || e.srcElement;
+
+                    if (target === valueNode && valuesListNode.style.display === 'none') {
                         valuesListNode.style.display = 'block';
                     } else {
                         valuesListNode.style.display = 'none';
@@ -5655,21 +6035,21 @@
                 },
                 onMouseEnter: function() {
                     var valueNode = this.refs.valueElement.getDOMNode();
-                    valueNode.className = "orb-tgl-btn-down";
+                    valueNode.className = 'orb-tgl-btn-down';
                     valueNode.style.backgroundPosition = 'right center';
                 },
                 onMouseLeave: function() {
-                    this.refs.valueElement.getDOMNode().className = "";
+                    this.refs.valueElement.getDOMNode().className = '';
                 },
                 componentDidMount: function() {
-                    document.addEventListener('click', this.openOrClose);
+                    utils.addEventListener(document, 'click', this.openOrClose);
                 },
                 componentWillUnmount: function() {
-                    document.removeEventListener('click', this.openOrClose);
+                    utils.removeEventListener(document, 'click', this.openOrClose);
                 },
                 selectValue: function(e) {
                     var listNode = this.refs.valuesList.getDOMNode();
-                    var target = e.target;
+                    var target = e.target || e.srcElement;
                     var isli = false;
                     while (!isli && target != null) {
                         if (target.parentNode == listNode) {
@@ -5812,7 +6192,7 @@
                 componentDidMount: function() {
                     this.overlayElement = this.getDOMNode().parentNode;
                     this.setOverlayClass(true);
-                    this.overlayElement.addEventListener('click', this.close);
+                    utils.addEventListener(this.overlayElement, 'click', this.close);
 
                     var dialogElement = this.overlayElement.children[0];
                     var dialogBodyElement = dialogElement.children[0].children[1];
@@ -5831,8 +6211,9 @@
                     dialogBodyElement.style.height = (dHeight - 45) + 'px';
                 },
                 close: function(e) {
-                    if (e.target == this.overlayElement || e.target.className === 'button-close') {
-                        this.overlayElement.removeEventListener('click', this.close);
+                    var target = e.target || e.srcElement;
+                    if (target == this.overlayElement || target.className === 'button-close') {
+                        utils.removeEventListener(this.overlayElement, 'click', this.close);
                         React.unmountComponentAtNode(this.overlayElement);
                         this.setOverlayClass(false);
                     }
@@ -5886,7 +6267,7 @@
                     if (action != null) {
                         var pgridComponent = this.props.pivotTableComp;
                         return function(e) {
-                            action(pgridComponent, e.target);
+                            action(pgridComponent, e.target || e.srcElement);
                         };
                     }
                     return null;
@@ -5965,7 +6346,7 @@
             var defaultToolbarConfig = {
                 exportToExcel: function(pgridComponent, button) {
                     var a = document.createElement('a');
-                    a.download = "orbpivotgrid.xls";
+                    a.download = 'orbpivotgrid.xls';
                     a.href = excelExport(pgridComponent.props.pgridwidget);
                     document.body.appendChild(a);
                     a.click();
@@ -5997,8 +6378,8 @@
                         classToRemove = 'subtotals-visible';
                     }
 
-                    reactUtils.removeClass(button, classToRemove);
-                    reactUtils.addClass(button, classToAdd);
+                    domUtils.removeClass(button, classToRemove);
+                    domUtils.addClass(button, classToAdd);
                 },
                 initSubtotals: function(axetype) {
                     var self = this;
@@ -6027,8 +6408,8 @@
                         classToRemove = 'grndtotal-visible';
                     }
 
-                    reactUtils.removeClass(button, classToRemove);
-                    reactUtils.addClass(button, classToAdd);
+                    domUtils.removeClass(button, classToRemove);
+                    domUtils.addClass(button, classToAdd);
                 },
                 initGrandtotal: function(axetype) {
                     var self = this;
@@ -6152,144 +6533,307 @@
                 ];
             }());
 
+            var SizingManager = module.exports.SizingManager = {
+                synchronizeWidths: function(pivotComp) {
+                    if (pivotComp.pgridwidget.pgrid.config.displayMode.isChart()) {
+                        return SizingManager.synchronizePivotChartWidths(pivotComp);
+                    } else {
+                        SizingManager.synchronizePivotTableWidths(pivotComp);
+                    }
+                },
+                synchronizePivotChartWidths: function(pivotComp) {
+                    var pivotWrapperTable = pivotComp.refs.pivotWrapperTable.getDOMNode(),
+                        pivot = new ComponentSizeInfo(pivotComp.refs.pivot),
+                        topBtns = new ComponentSizeInfo(pivotComp.refs.upperButtons),
+                        cBtns = new ComponentSizeInfo(pivotComp.refs.colButtons),
+                        rBtnsTbl = new ComponentSizeInfo(pivotComp.refs.rowButtons),
+                        chart = new ComponentSizeInfo(pivotComp.refs.chart),
+
+                        rBtnsWidth = Math.max(rBtnsTbl.w, 67),
+                        chartWidth = pivot.w - rBtnsWidth,
+
+                        pivotHeight = pivotComp.pgridwidget.pgrid.config.height,
+                        chartHeight = !pivotHeight ? null : (pivotHeight - (topBtns.h + cBtns.h));
+
+                    // set pivotWrapperTable columns width to fixed value
+                    domUtils.updateTableColGroup(pivotWrapperTable, [
+                        rBtnsWidth,
+                        chartWidth
+                    ]);
+
+                    return {
+                        width: chartWidth,
+                        height: chartHeight
+                    };
+                },
+                synchronizePivotTableWidths: function(pivotComp) {
+
+                    var pivotWrapperTable = pivotComp.refs.pivotWrapperTable.getDOMNode(),
+                        pivot = new ComponentSizeInfo(pivotComp.refs.pivot),
+                        toolbar = new ComponentSizeInfo(pivotComp.refs.toolbar),
+                        cHeadersTbl = new ComponentSizeInfo(pivotComp.refs.colHeaders, true, 'table'),
+                        rHeadersTbl = new ComponentSizeInfo(pivotComp.refs.rowHeaders, true, 'table'),
+                        dataCellsTbl = new ComponentSizeInfo(pivotComp.refs.dataCells, true, 'table'),
+                        topBtns = new ComponentSizeInfo(pivotComp.refs.upperButtons),
+                        cBtns = new ComponentSizeInfo(pivotComp.refs.colButtons),
+                        rBtnsTbl = new ComponentSizeInfo(pivotComp.refs.rowButtons, true),
+                        hScroll = new ComponentSizeInfo(pivotComp.refs.horizontalScrollBar),
+                        vScroll = new ComponentSizeInfo(pivotComp.refs.verticalScrollBar),
+
+                        dataCellsWidths = dataCellsTbl.getLargestWidths(cHeadersTbl),
+                        rHeadersWidth = Math.max(rHeadersTbl.w, rBtnsTbl.w, 67),
+                        dataCellsContainerWidth = Math.min(dataCellsWidths.total + 1, pivot.w - rHeadersWidth - vScroll.w),
+
+                        pivotHeight = pivotComp.pgridwidget.pgrid.config.height,
+                        dataCellsRemHeight = !pivotHeight ? null : (pivotHeight - (toolbar ? toolbar.h + 17 : 0) - (topBtns.h + cBtns.h + cHeadersTbl.h + hScroll.h)),
+                        dataCellsTableHeight = !dataCellsRemHeight ? null : Math.ceil(Math.min(dataCellsRemHeight, dataCellsTbl.h));
+
+                    // get rowHeaders table width to match with rowButtons table width
+                    rHeadersTbl.addToWidth(rHeadersWidth - rHeadersTbl.w);
+
+                    // Set dataCellsTable cells widths according to the computed dataCellsWidths
+                    domUtils.updateTableColGroup(dataCellsTbl.node, dataCellsWidths.max);
+
+                    // Set colHeadersTable cells widths according to the computed dataCellsWidths
+                    domUtils.updateTableColGroup(cHeadersTbl.node, dataCellsWidths.max);
+
+                    // Set rowHeadersTable cells widths
+                    domUtils.updateTableColGroup(rHeadersTbl.node, rHeadersTbl.colWidths);
+
+                    dataCellsTbl.setStyle('width', dataCellsWidths.total);
+                    cHeadersTbl.setStyle('width', dataCellsWidths.total);
+                    rHeadersTbl.setStyle('width', rHeadersWidth);
+
+                    // Adjust data cells container and column headers container width
+                    dataCellsTbl.setParentStyle('width', dataCellsContainerWidth);
+                    cHeadersTbl.setParentStyle('width', dataCellsContainerWidth);
+
+                    if (dataCellsTableHeight) {
+                        // Adjust data cells container and row headers container height
+                        dataCellsTbl.setParentStyle('height', dataCellsTableHeight);
+                        rHeadersTbl.setParentStyle('height', dataCellsTableHeight);
+                    }
+
+                    // set pivotWrapperTable columns width to fixed value
+                    domUtils.updateTableColGroup(pivotWrapperTable, [
+                        rHeadersWidth,
+                        dataCellsContainerWidth,
+                        vScroll.w,
+                        Math.max(pivot.w - (rHeadersWidth + dataCellsContainerWidth + vScroll.w), 0)
+                    ]);
+
+                    pivotComp.refs.horizontalScrollBar.refresh();
+                    pivotComp.refs.verticalScrollBar.refresh();
+                }
+            };
+
+            function ComponentSizeInfo(component, isWrapper, childType) {
+                var self = this,
+                    node = component.getDOMNode(),
+                    size;
+
+                this.node = isWrapper ? node.children[0] : node;
+
+                size = domUtils.getSize(this.node);
+                this.w = size.width;
+                this.h = size.height;
+
+                this.setStyle = function(styleProp, value) {
+                    self.node.style[styleProp] = value + 'px';
+                };
+
+                this.setParentStyle = function(styleProp, value) {
+                    self.node.parentNode.style[styleProp] = value + 'px';
+                };
+
+                this.getLargestWidths = function(otherCompInfo) {
+                    var result = {
+                        max: [],
+                        total: 0
+                    };
+
+                    // get the array of max widths between dataCellsTable and colHeadersTable
+                    for (var i = 0; i < self.colWidths.length; i++) {
+                        result.max.push(Math.max(self.colWidths[i], otherCompInfo.colWidths[i]));
+                        result.total += result.max[i];
+                    }
+
+                    return result;
+                };
+
+                this.addToWidth = function(value) {
+                    if (value > 0) {
+                        self.w += value;
+                        self.colWidths[self.colWidths.length - 1] += value;
+                    }
+                };
+
+                if (childType === 'table') {
+                    // get array of column widths
+                    getAllColumnsWidth(this);
+                }
+            }
+
+            function getAllColumnsWidth(tblObject) {
+                if (tblObject && tblObject.node) {
+
+                    var tbl = tblObject.node;
+                    var colWidths = [];
+
+                    for (var rowIndex = 0; rowIndex < tbl.rows.length; rowIndex++) {
+                        // current row
+                        var currRow = tbl.rows[rowIndex];
+                        // reset colWidths index
+                        var arrayIndex = 0;
+                        var currWidth = null;
+
+                        // get the width of each cell within current row
+                        for (var cellIndex = 0; cellIndex < currRow.cells.length; cellIndex++) {
+                            // current cell
+                            var currCell = currRow.cells[cellIndex];
+
+                            if (currCell.__orb._visible) {
+                                // cell width
+                                //var cellwidth = Math.ceil(domUtils.getSize(currCell.children[0]).width/currCell.colSpan);
+                                var cellwidth = Math.ceil((currCell.__orb._textWidth / currCell.__orb._colSpan) + currCell.__orb._paddingLeft + currCell.__orb._paddingRight + currCell.__orb._borderLeftWidth + currCell.__orb._borderRightWidth);
+                                // whether current cell spans vertically to the last row
+                                var rowsSpan = currCell.__orb._rowSpan > 1 && currCell.__orb._rowSpan >= tbl.rows.length - rowIndex;
+
+                                // if current cell spans over more than one column, add its width (its) 'colSpan' number of times
+                                for (var cspan = 0; cspan < currCell.__orb._colSpan; cspan++) {
+                                    // If cell span over more than 1 row: insert its width into colWidths at arrayIndex
+                                    // Else: either expand colWidths if necessary or replace the width if its smaller than current cell width
+
+                                    currWidth = colWidths[arrayIndex];
+                                    // skip inhibited widths (width that belongs to an upper cell than spans vertically to current row)
+                                    while (currWidth && currWidth.inhibit > 0) {
+                                        currWidth.inhibit--;
+                                        arrayIndex++;
+                                        currWidth = colWidths[arrayIndex];
+                                    }
+
+                                    if (colWidths.length - 1 < arrayIndex) {
+                                        colWidths.push({
+                                            width: cellwidth
+                                        });
+                                    } else if (cellwidth > colWidths[arrayIndex].width) {
+                                        colWidths[arrayIndex].width = cellwidth;
+                                    }
+
+                                    colWidths[arrayIndex].inhibit = currCell.__orb._rowSpan - 1;
+
+                                    // increment colWidths index
+                                    arrayIndex++;
+                                }
+                            }
+                        }
+
+                        // decrement inhibited state of all widths unsed in colWidths (not reached by current row cells)
+                        currWidth = colWidths[arrayIndex];
+                        while (currWidth) {
+                            if (currWidth.inhibit > 0) {
+                                currWidth.inhibit--;
+                            }
+                            arrayIndex++;
+                            currWidth = colWidths[arrayIndex];
+                        }
+                    }
+
+                    // set colWidths to the tblObject
+                    tblObject.w = 0;
+                    tblObject.colWidths = colWidths.map(function(item, index) {
+                        tblObject.w += item.width;
+                        return item.width;
+                    });
+                }
+            }
+
+            function setTableWidths(tblObject, colWidths) {
+                if (tblObject && tblObject.node) {
+
+                    // reset table width
+                    (tblObject.size = (tblObject.size || {})).width = 0;
+
+                    var tbl = tblObject.node;
+
+                    // for each row, set its cells width
+                    for (var rowIndex = 0; rowIndex < tbl.rows.length; rowIndex++) {
+
+                        // current row
+                        var currRow = tbl.rows[rowIndex];
+                        // index in colWidths
+                        var arrayIndex = 0;
+                        var currWidth = null;
+
+                        // set width of each cell
+                        for (var cellIndex = 0; cellIndex < currRow.cells.length; cellIndex++) {
+
+                            // current cell
+                            var currCell = currRow.cells[cellIndex];
+                            if (currCell.__orb._visible) {
+                                // cell width
+                                var newCellWidth = 0;
+                                // whether current cell spans vertically more than 1 row
+                                var rowsSpan = currCell.__orb._rowSpan > 1 && rowIndex < tbl.rows.length - 1;
+
+                                // current cell width is the sum of (its) "colspan" items in colWidths starting at 'arrayIndex'
+                                // 'arrayIndex' should be incremented by an amount equal to current cell 'colspan' but should also skip 'inhibited' cells
+                                for (var cspan = 0; cspan < currCell.__orb._colSpan; cspan++) {
+                                    currWidth = colWidths[arrayIndex];
+                                    // skip inhibited widths (width that belongs to an upper cell than spans vertically to current row)
+                                    while (currWidth && currWidth.inhibit > 0) {
+                                        currWidth.inhibit--;
+                                        arrayIndex++;
+                                        currWidth = colWidths[arrayIndex];
+                                    }
+
+                                    if (currWidth) {
+                                        // add width of cells participating in the span
+                                        newCellWidth += currWidth.width;
+                                        // if current cell spans vertically more than 1 row, mark its width as inhibited for all cells participating in this span
+                                        if (rowsSpan) {
+                                            currWidth.inhibit = currCell.__orb._rowSpan - 1;
+                                        }
+
+                                        // advance colWidths index
+                                        arrayIndex++;
+                                    }
+                                }
+
+                                currCell.children[0].style.width = newCellWidth + 'px';
+
+                                // set table width (only in first iteration)
+                                if (rowIndex === 0) {
+                                    var outerCellWidth = 0;
+                                    if (currCell.__orb) {
+                                        outerCellWidth = currCell.__orb._colSpan * (Math.ceil(currCell.__orb._paddingLeft + currCell.__orb._paddingRight + currCell.__orb._borderLeftWidth + currCell.__orb._borderRightWidth));
+                                    }
+                                    tblObject.w += newCellWidth + outerCellWidth;
+                                }
+                            }
+                        }
+
+                        // decrement inhibited state of all widths unsed in colWidths (not reached by current row cells)
+                        currWidth = colWidths[arrayIndex];
+                        while (currWidth) {
+                            if (currWidth.inhibit > 0) {
+                                currWidth.inhibit--;
+                            }
+                            arrayIndex++;
+                            currWidth = colWidths[arrayIndex];
+                        }
+                    }
+                }
+            }
+
         }, {
             "../orb.axe": 3,
             "../orb.export.excel": 6,
             "../orb.filtering": 7,
             "../orb.ui.header": 14,
-            "../orb.utils": 17,
-            "./orb.react.utils": 19,
+            "../orb.utils": 18,
+            "../orb.utils.dom": 17,
             "react": undefined
-        }],
-        19: [function(_dereq_, module, exports) {
-
-
-
-
-
-            module.exports.forEach = function(list, func, defStop) {
-                var ret;
-                if (list) {
-                    for (var i = 0, l = list.length; i < l; i++) {
-                        ret = func(list[i], i);
-                        if (ret !== undefined && defStop === true) {
-                            break;
-                        }
-                    }
-                }
-                return ret;
-            };
-
-            module.exports.removeClass = function(element, classname) {
-                if (element && classname) {
-                    while (element.className.indexOf(classname) >= 0) {
-                        element.className = element.className.replace(classname, '');
-                    }
-                }
-            };
-
-            module.exports.addClass = function(element, classname) {
-                if (element && classname) {
-                    if (element.className.indexOf(classname) < 0) {
-                        element.className += ' ' + classname;
-                    }
-                }
-            };
-
-            module.exports.getOffset = function(element) {
-                if (element) {
-                    var rect = element.getBoundingClientRect();
-                    return {
-                        x: rect.left,
-                        y: rect.top
-                    };
-                }
-                return {
-                    x: 0,
-                    y: 0
-                };
-            };
-
-            module.exports.getParentOffset = function(element) {
-                if (element) {
-                    var rect = element.getBoundingClientRect();
-                    var rectParent = element.parentNode != null ? element.parentNode.getBoundingClientRect() : {
-                        top: 0,
-                        left: 0
-                    };
-                    return {
-                        x: rect.left - rectParent.left,
-                        y: rect.top - rectParent.top
-                    };
-                }
-                return {
-                    x: 0,
-                    y: 0
-                };
-            };
-
-            module.exports.getSize = function(element) {
-                if (element) {
-                    var rect = element.getBoundingClientRect();
-                    return {
-                        width: rect.right - rect.left,
-                        height: rect.bottom - rect.top
-                    };
-                }
-                return {
-                    width: 0,
-                    height: 0
-                };
-            };
-
-            module.exports.getStyle = function(element, styleProps, keepString) {
-                var values = [];
-                if (element && styleProps) {
-                    var currStyle, f;
-                    if (element.currentStyle) {
-                        currStyle = element.currentStyle;
-                        f = function(prop) {
-                            return currStyle[prop];
-                        };
-                    } else if (window && window.getComputedStyle) {
-                        currStyle = window.getComputedStyle(element, null);
-                        f = function(prop) {
-                            return currStyle.getPropertyValue(prop);
-                        };
-                    }
-
-                    for (var i = 0; i < styleProps.length; i++) {
-                        var val = f(styleProps[i]);
-                        values.push(val && keepString !== true ? Math.ceil(parseFloat(val)) : val);
-                    }
-                }
-                return values;
-            };
-
-            module.exports.isVisible = function(element) {
-                if (element) {
-                    return element.style.display !== 'none' && (element.offsetWidth !== 0 || element.offsetHeight !== 0);
-                }
-                return false;
-            };
-
-            module.exports.updateTableColGroup = function(tableNode, widths) {
-                if (tableNode) {
-                    var colGroupNode = tableNode.firstChild;
-                    if (colGroupNode && colGroupNode.nodeName === 'COLGROUP') {
-                        tableNode.style.tableLayout = 'auto';
-                        tableNode.style.width = '';
-
-                        colGroupNode.innerHTML = '';
-                        for (var i = 0; i < widths.length; i++) {
-                            var col = document.createElement('col');
-                            col.style.width = widths[i] + 'px';
-                            colGroupNode.appendChild(col);
-                        }
-                        tableNode.style.tableLayout = 'fixed';
-                    }
-                }
-            };
-        }, {}]
+        }]
     }, {}, [1])(1)
 });
