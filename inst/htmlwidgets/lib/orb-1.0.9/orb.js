@@ -597,6 +597,10 @@
                     return self.type === 'Chart';
                 }
 
+                this.isHeatmap = function() {
+                    return self.type === 'Heatmap';
+                };
+
                 this.toJSON = function() {
                     return {
                         type: self.type,
@@ -1063,6 +1067,14 @@
                 this.subdimvals = {};
 
                 this.rowIndexes = null;
+
+                this.getRoot = function() {
+                    var dim = self;
+                    while (!dim.isRoot) {
+                        dim = dim.parent;
+                    }
+                    return dim;
+                }
 
                 this.getRowIndexes = function(result) {
                     if (self.rowIndexes == null) {
@@ -2796,6 +2808,13 @@
                         colinfo.value) :
                     pgrid.config.dataFields[0];
 
+                var value = pgrid.getData(this.datafield ? this.datafield.name : null, this.rowDimension, this.columnDimension),
+                    grandtotal;
+
+                if (pgrid.config.displayMode.isHeatmap()) {
+                    grandtotal = pgrid.getData(this.datafield ? this.datafield.name : null, this.rowDimension.getRoot(), this.columnDimension.getRoot());
+                    this.heatmapValue = grandtotal == 0 ? 0 : (value / grandtotal);
+                }
 
                 CellBase.call(this, {
                     axetype: null,
@@ -4176,6 +4195,7 @@
                 render: function() {
                     var self = this;
                     var cell = this.props.cell;
+                    var cellStyle = {};
                     var divcontent = [];
                     var value;
                     var cellClick;
@@ -4219,6 +4239,11 @@
                             break;
                         case 'cell-template-datavalue':
                             value = (cell.datafield && cell.datafield.formatFunc) ? cell.datafield.formatFunc(cell.value) : cell.value;
+                            if (value && self.props.pivotTableComp.pgridwidget.pgrid.config.displayMode.isHeatmap()) {
+                                cellStyle = {
+                                    backgroundColor: 'rgb(255, ' + Math.round((1 - cell.heatmapValue) * 174 + 81) + ', ' + Math.round((1 - cell.heatmapValue) * 174 + 81) + ')'
+                                }
+                            }
                             cellClick = function() {
                                 self.props.pivotTableComp.pgridwidget.drilldown(cell, self.props.pivotTableComp.id);
                             };
@@ -4253,7 +4278,8 @@
                             className: getClassname(this.props),
                             onDoubleClick: cellClick,
                             colSpan: cell.hspan(),
-                            rowSpan: cell.vspan()
+                            rowSpan: cell.vspan(),
+                            style: cellStyle
                         },
                         React.createElement("div", null,
                             divcontent
