@@ -2919,6 +2919,22 @@
                         }
                     };
 
+                    function _render() {
+                        if (renderElement) {
+                            React.unmountComponentAtNode(renderElement);
+
+                            var pivotTableFactory = React.createFactory(
+                                self.pgrid.config.displayMode.isChart() ?
+                                OrbReactComps.PivotChart :
+                                OrbReactComps.PivotTable);
+                            var pivottable = pivotTableFactory({
+                                pgridwidget: self
+                            });
+
+                            pivotComponent = React.render(pivottable, renderElement);
+                        }
+                    }
+
                     this.sort = function(axetype, field) {
                         if (axetype === axe.Type.ROWS) {
                             self.pgrid.rows.sort(field);
@@ -2936,9 +2952,17 @@
                     };
 
                     this.rebuild = function(newConfig) {
+                        var isCurrDisplayChart = self.pgrid.config.displayMode.isChart(),
+                            isNewDisplayChart = (newConfig.displayMode ? newConfig.displayMode.type : null) === 'Chart';
+
                         self.pgrid.rebuild(newConfig);
                         buildUi();
-                        pivotComponent.setProps({});
+
+                        if (isNewDisplayChart !== isCurrDisplayChart) {
+                            _render();
+                        } else {
+                            pivotComponent.setProps({});
+                        }
                     };
 
                     this.refreshData = function(data) {
@@ -2999,21 +3023,10 @@
 
                     this.render = function(element) {
                         renderElement = element;
-                        if (renderElement) {
-                            var pivotTableFactory = React.createFactory(
-                                self.pgrid.config.displayMode.isChart() ?
-                                OrbReactComps.PivotChart :
-                                OrbReactComps.PivotTable);
-                            var pivottable = pivotTableFactory({
-                                pgridwidget: self
-                            });
-
-                            if (self.pgrid.config.name != null && typeof self.pgrid.config.name === 'string') {
-                                renderElement['__orb_instance'] = self.pgrid.config.name;
-                            }
-
-                            pivotComponent = React.render(pivottable, element);
+                        if (self.pgrid.config.name != null && typeof self.pgrid.config.name === 'string') {
+                            renderElement['__orb_instance'] = self.pgrid.config.name;
                         }
+                        _render();
                     };
 
                     this.drilldown = function(dataCell, pivotId) {
