@@ -2459,7 +2459,7 @@
                                 if (currparent != prevpar) {
                                     pushsubtotal(prevpar);
                                     if (currparent != null) {
-                                        // walk up parent hierarchy and add grand parents if different 
+                                        // walk up parent hierarchy and add grand parents if different
                                         // than current header grand parents
                                         var grandpar = currparent.parent;
                                         var prevgrandpar = prevpar ? prevpar.parent : null;
@@ -3065,7 +3065,7 @@
                         var rowsHeaders = self.rows.headers;
                         var columnsLeafHeaders = self.columns.leafsHeaders;
 
-                        // set control layout infos		
+                        // set control layout infos
                         self.layout = {
                             rowHeaders: {
                                 width: (self.pgrid.rows.fields.length || 1) +
@@ -4073,7 +4073,7 @@
                         var isleftmost = false;
 
                         // If current cells are column/data headers and left most cell is not found yet
-                        // and last row left most cell does not span vertically over the current one and current one is visible 
+                        // and last row left most cell does not span vertically over the current one and current one is visible
                         // then mark IT as the left most cell
                         if (cell.visible() && layoutInfos) {
                             if (cell.dim) {
@@ -5424,11 +5424,12 @@
                                 //fontName: this.state.chartStyle.fontFamily,
                                 //fontSize: parseFloat(this.state.chartStyle.fontSize),
                                 hAxis: {
-                                    title: chartData.hAxisLabel
+                                    title: chartData.hAxisLabel,
+                                    format : 'currency'
                                 },
                                 vAxis: {
-                                    title: chartData.vAxisLabel
-                                }
+                                    title: chartData.vAxisLabel,
+                                },
                             };
                         } else {
                             data = google.visualization.arrayToDataTable([

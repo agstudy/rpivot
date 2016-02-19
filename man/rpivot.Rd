@@ -4,9 +4,9 @@
 \alias{rpivot}
 \title{Create orb pivot widget}
 \usage{
-rpivot(dataSource, fields, name = "pgridwidget", rows = NULL,
-  columns = NULL, data = NULL, width = NULL, height = NULL,
-  dataSettings = NULL, dataHeadersLocation = "columns",
+rpivot(dataSource, fields, displayMode = NULL, name = "pgridwidget",
+  rows = NULL, columns = NULL, data = NULL, width = NULL,
+  height = NULL, dataSettings = NULL, dataHeadersLocation = "columns",
   toolbar = list(visible = TRUE), theme = "green")
 }
 \arguments{
