@@ -460,31 +460,51 @@
                     fieldAxeconfig = null;
                 }
 
-                var merged = mergefieldconfigs(fieldconfig, fieldAxeconfig, axeconfig, defaultfieldconfig, rootconfig),
-                    defaultAggregateFunc = aggregation.sum,
-                    defaultAggregateFuncName = 'sum',
-                    defaultFormatFunc = function(val) {
+                var merged = mergefieldconfigs(fieldconfig, fieldAxeconfig, axeconfig, defaultfieldconfig, rootconfig);
+
+                return createFieldFromMerge(merged);
+            }
+
+            function createFieldFromMerge(merged, setDefaults) {
+                setDefaults = setDefaults === false ? false : true;
+
+                var defaults = !setDefaults ? {
+                    sort: {},
+                    subTotal: {}
+                } : {
+                    name: '',
+                    caption: '',
+                    sort: {},
+                    subTotal: {
+                        visible: true,
+                        collapsible: true,
+                        collapsed: false
+                    },
+                    aggregateFunc: aggregation.sum,
+                    aggregateFuncName: 'sum',
+                    formatFunc: function(val) {
                         return val != null ? val.toString() : '';
-                    };
+                    }
+                };
 
                 return new Field({
-                    name: getpropertyvalue('name', merged.configs, ''),
+                    name: getpropertyvalue('name', merged.configs, defaults.name),
 
-                    caption: getpropertyvalue('caption', merged.configs, ''),
+                    caption: getpropertyvalue('caption', merged.configs, defaults.caption),
 
                     sort: {
-                        order: getpropertyvalue('order', merged.sorts, null),
-                        customfunc: getpropertyvalue('customfunc', merged.sorts, null)
+                        order: getpropertyvalue('order', merged.sorts, defaults.sort.order),
+                        customfunc: getpropertyvalue('customfunc', merged.sorts, defaults.sort.customfunc)
                     },
                     subTotal: {
-                        visible: getpropertyvalue('visible', merged.subtotals, true),
-                        collapsible: getpropertyvalue('collapsible', merged.subtotals, true),
-                        collapsed: getpropertyvalue('collapsed', merged.subtotals, false) && getpropertyvalue('collapsible', merged.subtotals, true)
+                        visible: getpropertyvalue('visible', merged.subtotals, defaults.subTotal.visible),
+                        collapsible: getpropertyvalue('collapsible', merged.subtotals, defaults.subTotal.collapsible),
+                        collapsed: getpropertyvalue('collapsed', merged.subtotals, defaults.subTotal.collapsed) && getpropertyvalue('collapsible', merged.subtotals, defaults.subTotal.collapsible)
                     },
 
-                    aggregateFuncName: getpropertyvalue('aggregateFuncName', merged.functions, defaultAggregateFuncName),
-                    aggregateFunc: getpropertyvalue('aggregateFunc', merged.functions, defaultAggregateFunc),
-                    formatFunc: getpropertyvalue('formatFunc', merged.functions, defaultFormatFunc)
+                    aggregateFuncName: getpropertyvalue('aggregateFuncName', merged.functions, defaults.aggregateFuncName),
+                    aggregateFunc: getpropertyvalue('aggregateFunc', merged.functions, defaults.aggregateFunc),
+                    formatFunc: getpropertyvalue('formatFunc', merged.functions, defaults.formatFunc)
                 }, false);
             }
 
@@ -634,9 +654,9 @@
                 this.formatFunc = options.formatFunc;
 
                 if (createSubOptions !== false) {
-                    (this.rowSettings = new Field(options.rowSettings, false)).name = this.name;
-                    (this.columnSettings = new Field(options.columnSettings, false)).name = this.name;
-                    (this.dataSettings = new Field(options.dataSettings, false)).name = this.name;
+                    (this.rowSettings = createFieldFromMerge(mergefieldconfigs(new Field(options.rowSettings, false), this), false)).name = this.name;
+                    (this.columnSettings = createFieldFromMerge(mergefieldconfigs(new Field(options.columnSettings, false), this), false)).name = this.name;
+                    (this.dataSettings = createFieldFromMerge(mergefieldconfigs(new Field(options.dataSettings, false), this), false)).name = this.name;
                 }
 
                 this.toJSON = function() {
