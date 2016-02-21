@@ -835,12 +835,22 @@
                         utils.ownProperties(config.preFilters).forEach(function(filteredField) {
                             var prefilterConfig = config.preFilters[filteredField];
                             if (utils.isArray(prefilterConfig)) {
-                                prefilters[self.captionToName(filteredField)] = new filtering.expressionFilter(null, null, prefilterConfig, false);
+                                prefilters[self.captionToName(filteredField)] = new filtering.expressionFilter({
+                                    staticValue: prefilterConfig
+                                });
                             } else {
-                                var opname = utils.ownProperties(prefilterConfig)[0];
-                                if (opname) {
-                                    prefilters[self.captionToName(filteredField)] = new filtering.expressionFilter(opname, prefilterConfig[opname]);
-                                }
+                                var filterOptions = {};
+                                utils.ownProperties(prefilterConfig).forEach(function(filterProp) {
+                                    if (filterProp === 'isRegexp') {
+                                        filterOptions.isRegexp = prefilterConfig.isRegexp;
+                                    } else {
+                                        // filterProp = operator name
+                                        filterOptions.operator = filterProp;
+                                        filterOptions.term = prefilterConfig[filterProp];
+                                    }
+                                });
+
+                                prefilters[self.captionToName(filteredField)] = new filtering.expressionFilter(filterOptions);
                             }
                         });
                     }
@@ -1278,14 +1288,16 @@
                 BLANK: '#Blank#"'
             };
 
-            filtering.expressionFilter = function(operator, term, staticValue, excludeStatic) {
+            filtering.expressionFilter = function(options) {
                 var self = this;
 
-                this.operator = ops.get(operator);
-                this.regexpMode = false;
-                this.term = term || null;
+                this.operator = ops.get(options.operator);
+                this.regexpMode = options.isRegexp !== true ? false : true;
+                this.term = options.term || null;
                 if (this.term && this.operator && this.operator.regexpSupported) {
-                    if (utils.isRegExp(this.term)) {
+                    if (this.regexpMode) {
+                        this.term = new RegExp(this.term.toString(), 'i');
+                    } else if (utils.isRegExp(this.term)) {
                         this.regexpMode = true;
                         if (!this.term.ignoreCase) {
                             this.term = new RegExp(this.term.source, 'i');
@@ -1293,8 +1305,8 @@
                     }
                 }
 
-                this.staticValue = staticValue;
-                this.excludeStatic = excludeStatic;
+                this.staticValue = options.staticValue;
+                this.excludeStatic = options.excludeStatic;
 
                 this.test = function(value) {
                     if (utils.isArray(self.staticValue)) {
@@ -1314,6 +1326,27 @@
                 this.isAlwaysTrue = function() {
                     return !(self.term || utils.isArray(self.staticValue) || self.staticValue === filtering.NONE || self.staticValue === false);
                 };
+
+                this.toJSON = function() {
+                    if (self.isAlwaysTrue()) {
+                        return true;
+                    }
+
+                    if (utils.isArray(self.staticValue)) {
+                        return self.staticValue;
+                    }
+
+                    var ret = {};
+                    if (self.operator) {
+                        if (self.regexpMode) {
+                            ret[self.operator.name] = self.term.source;
+                            ret.isRegexp = true;
+                        } else {
+                            ret[self.operator.name] = self.term;
+                        }
+                    }
+                    return ret;
+                }
             };
 
             var ops = filtering.Operators = {
@@ -1344,7 +1377,11 @@
                     name: 'Matches',
                     func: function(value, term) {
                         if (value) {
-                            return value.toString().search(utils.isRegExp(term) ? term : new RegExp(term, 'i')) >= 0;
+                            try {
+                                return value.toString().search(utils.isRegExp(term) ? term : new RegExp(term, 'i')) >= 0;
+                            } catch (e) {
+                                return false;
+                            }
                         } else {
                             return !(!!term);
                         }
@@ -1355,7 +1392,11 @@
                     name: 'Does Not Match',
                     func: function(value, term) {
                         if (value) {
-                            return value.toString().search(utils.isRegExp(term) ? term : new RegExp(term, 'i')) < 0;
+                            try {
+                                return value.toString().search(utils.isRegExp(term) ? term : new RegExp(term, 'i')) < 0;
+                            } catch (e) {
+                                return false;
+                            }
                         } else {
                             return !!term;
                         }
@@ -1489,7 +1530,12 @@
                 };
 
                 this.applyFilter = function(fieldname, operator, term, staticValue, excludeStatic) {
-                    self.filters[fieldname] = new filtering.expressionFilter(operator, term, staticValue, excludeStatic);
+                    self.filters[fieldname] = new filtering.expressionFilter({
+                        operator: operator,
+                        term: term,
+                        staticValue: staticValue,
+                        excludeStatic: excludeStatic
+                    });
                     refresh();
                 };
 
@@ -2894,6 +2940,8 @@
                 var uicols = _dereq_('./orb.ui.cols');
                 var domUtils = _dereq_('./orb.utils.dom');
                 var OrbReactComps = _dereq_('./react/orb.react.compiled');
+                var utils = _dereq_('./orb.utils.js');
+
 
                 module.exports = function(config) {
 
@@ -2968,7 +3016,18 @@
                     };
 
                     this.getCurrentConfig = function() {
-                        return self.pgrid.config.toJSON();
+                        var json = self.pgrid.config.toJSON();
+                        if (self.pgrid.filters) {
+                            json.preFilters = {};
+                            utils.ownProperties(self.pgrid.filters).forEach(function(field) {
+                                var filter = self.pgrid.filters[field].toJSON();
+                                if (filter !== true) {
+                                    json.preFilters[field] = self.pgrid.filters[field].toJSON();
+                                }
+                            });
+                        }
+
+                        return json;
                     };
 
                     this.rebuild = function(newConfig) {
@@ -3151,6 +3210,7 @@
             "./orb.ui.header": 14,
             "./orb.ui.rows": 16,
             "./orb.utils.dom": 17,
+            "./orb.utils.js": 18,
             "./react/orb.react.compiled": 19
         }],
         16: [function(_dereq_, module, exports) {

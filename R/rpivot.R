@@ -27,8 +27,10 @@ rpivot <-
            height = NULL,
            dataSettings=NULL,
            dataHeadersLocation ="columns",
+           preFilters =NULL,
            toolbar =list(visible= TRUE),
-           theme="green") {
+           theme="green",
+           update=FALSE) {
 
     if(missing(fields)){
       fields <- lapply(names(dataSource),function(x)list(name=x))
@@ -44,6 +46,7 @@ rpivot <-
       dataSettings = dataSettings,
       theme= theme,
       dataHeadersLocation=dataHeadersLocation,
+      preFilters=preFilters,
       toolbar= toolbar,
       grandTotal = list( rowsvisible=FALSE, columnsvisible= FALSE )
     )
@@ -52,7 +55,8 @@ rpivot <-
     x <- list(
       name =name,
       dataSource = dataSource,
-      config = config
+      config = config,
+      update=update
     )
     attr(x, 'TOJSON_ARGS') <- list(dataframe = "rows")
     # create the widget

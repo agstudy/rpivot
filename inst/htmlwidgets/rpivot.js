@@ -25,7 +25,19 @@ HTMLWidgets.widget({
     }
 
     if(pgridwidget != null) {
-      pgridwidget.rebuild(config);
+      var updateConfig;
+
+      if(x.update) {
+        updateConfig = pgridwidget.getCurrentConfig();
+        updateConfig.dataSource = config.dataSource;
+        updateConfig.fields = config.fields;
+        updateConfig.data = config.data;
+        updateConfig.displayMode = config.displayMode;
+      }else {
+        updateConfig = config;
+      }
+
+      pgridwidget.rebuild(updateConfig);
     } else {
       // Render it inside a container element:
       pgridwidget = new orb.pgridwidget(config);
