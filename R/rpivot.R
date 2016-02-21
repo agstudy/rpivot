@@ -27,6 +27,7 @@ rpivot <-
            height = NULL,
            dataSettings=NULL,
            dataHeadersLocation ="columns",
+           preFilters =NULL,
            toolbar =list(visible= TRUE),
            theme="green") {
 
@@ -44,6 +45,7 @@ rpivot <-
       dataSettings = dataSettings,
       theme= theme,
       dataHeadersLocation=dataHeadersLocation,
+      preFilters=preFilters,
       toolbar= toolbar,
       grandTotal = list( rowsvisible=FALSE, columnsvisible= FALSE )
     )
