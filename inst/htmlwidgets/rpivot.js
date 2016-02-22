@@ -44,6 +44,16 @@ HTMLWidgets.widget({
       pgridwidget.render(el);
     }
 
+    // add an id and a css class to data area
+    var dataAreaElement = document.querySelector('.orb-container .data-cntr') ||
+                           document.querySelector('.orb-container .chart');
+    if(dataAreaElement != null) {
+      dataAreaElement.parentNode.id = (x.name || 'pgridwidget') + '_dataArea';
+      if(dataAreaElement.parentNode.className.indexOf('shiny-plot-output') < 0) {
+        dataAreaElement.parentNode.className += ' shiny-plot-output';
+      }
+    }
+
   },
 
   resize: function(el, width, height, instance) {
