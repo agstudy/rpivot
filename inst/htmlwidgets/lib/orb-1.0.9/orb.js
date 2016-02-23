@@ -90,91 +90,144 @@
 
 
 
-            var Aggregations = module.exports = {
-                toAggregateFunc: function(func) {
-                    if (func) {
-                        if (typeof func === 'string' && Aggregations[func]) {
-                            return Aggregations[func];
-                        } else if (typeof func === 'function') {
-                            return func;
-                        }
-                    }
+            var _allNames = null
 
-                    return null;
-                },
-                toAggregateFuncName: function(func) {
-                    if (func && typeof func === 'function') {
-                        for (var aggFunc in Aggregations) {
-                            if (Aggregations[aggFunc] == func) {
-                                return aggFunc;
+            var Aggregations = module.exports = {
+                resolveAggregateFunc: function(options) {
+                    if (options) {
+                        var stringOptions = typeof options === 'string',
+                            objectOptions = typeof options === 'object',
+                            funcName = options ? (stringOptions ? options : (objectOptions ? options.name || options.caption : null)) || 'Custom' : null,
+                            caption = stringOptions ? null : (objectOptions ? options.caption : null);
+
+                        if (funcName) {
+                            if (Aggregations.builtins[funcName]) {
+                                return {
+                                    isBuiltin: true,
+                                    name: funcName,
+                                    func: Aggregations.builtins[funcName].func,
+                                    caption: caption || Aggregations.builtins[funcName].caption
+                                };
+                            } else if (objectOptions && typeof options.func === 'function') {
+                                return {
+                                    isBuiltin: false,
+                                    name: funcName,
+                                    func: options.func,
+                                    caption: caption || funcName
+                                };
                             }
                         }
-                        return 'Custom';
                     }
 
                     return null;
                 },
-                count: function(datafield, intersection, datasource) {
-                    return intersection === 'all' ? datasource.length : intersection.length;
-                },
-                sum: function(datafield, intersection, datasource) {
-                    var sum = 0;
-                    forEachIntersection(datafield, intersection, datasource, function(val) {
-                        sum += val;
-                    });
-                    return sum;
-                },
-                min: function(datafield, intersection, datasource) {
-                    var min = null;
-                    forEachIntersection(datafield, intersection, datasource, function(val) {
-                        if (min == null || val < min) {
-                            min = val;
+                builtins: {
+                    count: {
+                        func: function(datafield, intersection, datasource) {
+                            return intersection === 'all' ? datasource.length : intersection.length;
+                        },
+                        caption: 'Count'
+                    },
+                    sum: {
+                        func: function(datafield, intersection, datasource) {
+                            var sum = 0;
+                            forEachIntersection(datafield, intersection, datasource, function(val) {
+                                sum += val;
+                            });
+                            return sum;
+                        },
+                        caption: 'Sum'
+                    },
+                    min: {
+                        func: function(datafield, intersection, datasource) {
+                            var min = null;
+                            forEachIntersection(datafield, intersection, datasource, function(val) {
+                                if (min == null || val < min) {
+                                    min = val;
+                                }
+                            });
+                            return min;
+                        },
+                        caption: 'Min'
+                    },
+                    max: {
+                        func: function(datafield, intersection, datasource) {
+                            var max = null;
+                            forEachIntersection(datafield, intersection, datasource, function(val) {
+                                if (max == null || val > max) {
+                                    max = val;
+                                }
+                            });
+                            return max;
+                        },
+                        caption: 'Max'
+                    },
+                    avg: {
+                        func: function(datafield, intersection, datasource) {
+                            var avg = 0;
+                            var len = (intersection === 'all' ? datasource : intersection).length;
+                            if (len > 0) {
+                                forEachIntersection(datafield, intersection, datasource, function(val) {
+                                    avg += val;
+                                });
+                                avg /= len;
+                            }
+                            return avg;
+                        },
+                        caption: 'Average'
+                    },
+                    prod: {
+                        func: function(datafield, intersection, datasource) {
+                            var prod;
+                            var len = (intersection === 'all' ? datasource : intersection).length;
+                            if (len > 0) {
+                                prod = 1;
+                                forEachIntersection(datafield, intersection, datasource, function(val) {
+                                    prod *= val;
+                                });
+                            }
+                            return prod;
+                        },
+                        caption: 'Product'
+                    },
+                    stdev: {
+                        func: function(datafield, intersection, datasource) {
+                            return Math.sqrt(calcVariance(datafield, intersection, datasource, false));
+                        },
+                        caption: 'Standard deviation'
+                    },
+                    stdevp: {
+                        func: function(datafield, intersection, datasource) {
+                            return Math.sqrt(calcVariance(datafield, intersection, datasource, true));
+                        },
+                        caption: 'Standard deviation .P'
+                    },
+                    'var': {
+                        func: function(datafield, intersection, datasource) {
+                            return calcVariance(datafield, intersection, datasource, false);
+                        },
+                        caption: 'Variance'
+                    },
+                    varp: {
+                        func: function(datafield, intersection, datasource) {
+                            return calcVariance(datafield, intersection, datasource, true);
+                        },
+                        caption: 'Variance .P'
+                    },
+                    getAll: function() {
+                        var aggFuncName;
+
+                        if (!_allNames) {
+                            _allNames = [];
+                            for (var aggFuncName in Aggregations.builtins) {
+                                if (aggFuncName !== 'getAll') {
+                                    _allNames.push(aggFuncName);
+                                }
+                            }
                         }
-                    });
-                    return min;
-                },
-                max: function(datafield, intersection, datasource) {
-                    var max = null;
-                    forEachIntersection(datafield, intersection, datasource, function(val) {
-                        if (max == null || val > max) {
-                            max = val;
-                        }
-                    });
-                    return max;
-                },
-                avg: function(datafield, intersection, datasource) {
-                    var avg = 0;
-                    var len = (intersection === 'all' ? datasource : intersection).length;
-                    if (len > 0) {
-                        forEachIntersection(datafield, intersection, datasource, function(val) {
-                            avg += val;
-                        });
-                        avg /= len;
+
+                        return _allNames;
                     }
-                    return avg;
-                },
-                prod: function(datafield, intersection, datasource) {
-                    var prod;
-                    var len = (intersection === 'all' ? datasource : intersection).length;
-                    if (len > 0) {
-                        prod = 1;
-                        forEachIntersection(datafield, intersection, datasource, function(val) {
-                            prod *= val;
-                        });
-                    }
-                    return prod;
-                },
-                stdev: function(datafield, intersection, datasource) {
-                    return Math.sqrt(calcVariance(datafield, intersection, datasource, false));
-                },
-                stdevp: function(datafield, intersection, datasource) {
-                    return Math.sqrt(calcVariance(datafield, intersection, datasource, true));
-                },
-                'var': function(datafield, intersection, datasource) {
-                    return calcVariance(datafield, intersection, datasource, false);
-                },
-                varp: function(datafield, intersection, datasource) {
-                    return calcVariance(datafield, intersection, datasource, true);
                 }
             };
 
@@ -418,12 +471,13 @@
 
                 for (var i = 0; i < arguments.length; i++) {
                     var nnconfig = arguments[i] || {};
+
                     merged.configs.push(nnconfig);
                     merged.sorts.push(nnconfig.sort || {});
                     merged.subtotals.push(nnconfig.subTotal || {});
                     merged.functions.push({
-                        aggregateFuncName: nnconfig.aggregateFuncName || aggregation.toAggregateFuncName(nnconfig.aggregateFunc),
-                        aggregateFunc: aggregation.toAggregateFunc(nnconfig.aggregateFunc),
+                        aggregation: nnconfig.aggregation && (!nnconfig.aggregation.isEmpty || !nnconfig.aggregation.isEmpty()) ? nnconfig.aggregation : null,
+                        enabledBuiltinAggregations: nnconfig.enabledBuiltinAggregations,
                         formatFunc: nnconfig.formatFunc,
                     });
                 }
@@ -480,8 +534,13 @@
                         collapsible: true,
                         collapsed: false
                     },
-                    aggregateFunc: aggregation.sum,
-                    aggregateFuncName: 'sum',
+                    aggregation: {
+                        isBuiltin: true,
+                        name: 'sum',
+                        func: aggregation.builtins.sum.func,
+                        caption: aggregation.builtins.sum.caption
+                    },
+                    enabledBuiltinAggregations: null,
                     formatFunc: function(val) {
                         return val != null ? val.toString() : '';
                     }
@@ -502,8 +561,8 @@
                         collapsed: getpropertyvalue('collapsed', merged.subtotals, defaults.subTotal.collapsed) && getpropertyvalue('collapsible', merged.subtotals, defaults.subTotal.collapsible)
                     },
 
-                    aggregateFuncName: getpropertyvalue('aggregateFuncName', merged.functions, defaults.aggregateFuncName),
-                    aggregateFunc: getpropertyvalue('aggregateFunc', merged.functions, defaults.aggregateFunc),
+                    aggregation: getpropertyvalue('aggregation', merged.functions, defaults.aggregation),
+                    enabledBuiltinAggregations: getpropertyvalue('enabledBuiltinAggregations', merged.functions, defaults.enabledBuiltinAggregations),
                     formatFunc: getpropertyvalue('formatFunc', merged.functions, defaults.formatFunc)
                 }, false);
             }
@@ -599,9 +658,50 @@
 
                     return empty ? null : json;
                 };
-            }
+            };
 
-            function DisplayMode(options) {
+            var AggregationConfig = module.exports.aggregationConfig = function(options) {
+
+                var self = this,
+                    resolved = options ? aggregation.resolveAggregateFunc(options) : null;
+
+                this.setFrom = function(source) {
+                    if (source) {
+                        self.isBuiltin = source.isBuiltin;
+                        self.name = source.name;
+                        self.func = source.func;
+                        self.caption = source.caption;
+                    }
+                    return self;
+                };
+
+                this.setFrom(resolved);
+
+                this.isEmpty = function() {
+                    return self.isBuitin === undefined &&
+                        self.name === undefined &&
+                        self.func === undefined &&
+                        self.caption === undefined;
+                };
+
+                this.toJSON = function() {
+                    var json = {
+                        name: self.name
+                    };
+
+                    if (self.caption !== self.name) {
+                        json.caption = self.caption;
+                    }
+
+                    if (!self.isBuiltin) {
+                        json.func = self.func;
+                    }
+
+                    return json;
+                }
+            };
+
+            var DisplayMode = module.exports.displayMode = function(options) {
 
                 var self = this;
 
@@ -646,11 +746,21 @@
                 this.subTotal = new SubTotalConfig(options.subTotal);
 
                 // data settings
-                var _aggregatefunc;
-                var _formatfunc;
+                this.aggregation = new AggregationConfig(options.aggregation);
 
-                this.aggregateFunc = aggregation.toAggregateFunc(options.aggregateFunc);
-                this.aggregateFuncName = options.aggregateFuncName || aggregation.toAggregateFuncName(this.aggregateFunc);
+                this.enabledBuiltinAggregations = options.enabledBuiltinAggregations || (options.disabledBuiltinAggregations ? aggregation.builtins.getAll().filter(function(agg) {
+                    return options.disabledBuiltinAggregations.indexOf(agg) === -1;
+                }) : null);
+
+                // if the selected aggregate is not in the enabled ones
+                if (!this.aggregation.isEmpty() && this.enabledBuiltinAggregations && this.enabledBuiltinAggregations.indexOf(this.aggregation.name) === -1) {
+                    //throw an exception:
+                    throw 'The selected aggregate function "' + this.aggregation.name + '" for field "' + this.name + '" is not enabled.';
+                }
+
+                // set custom aggregate func properties
+                this.customAggregationProps = new AggregationConfig().setFrom(this.aggregation);
+
                 this.formatFunc = options.formatFunc;
 
                 if (createSubOptions !== false) {
@@ -659,10 +769,25 @@
                     (this.dataSettings = createFieldFromMerge(mergefieldconfigs(new Field(options.dataSettings, false), this), false)).name = this.name;
                 }
 
+                this.setAggregateFunc = function(aggregateFuncName) {
+                    if (self.aggregation.name !== aggregateFuncName) {
+
+                        if (aggregateFuncName === self.customAggregationProps.name) {
+                            this.aggregation.setFrom(self.customAggregationProps)
+                        } else {
+                            this.aggregation.setFrom(aggregation.resolveAggregateFunc(aggregateFuncName));
+                        }
+
+                        return true;
+                    }
+
+                    return false;
+                };
+
                 this.toJSON = function() {
                     var json = {},
-                        propsGroup1 = ['name', 'caption', 'aggregateFuncName', 'aggregateFunc', 'formatFunc'],
-                        propsGroup2 = ['sort', 'subTotal', 'rowSettings', 'columnSettings', 'dataSettings'],
+                        propsGroup1 = ['name', 'caption', 'formatFunc'],
+                        propsGroup2 = ['sort', 'subTotal', 'aggregation', 'rowSettings', 'columnSettings', 'dataSettings'],
                         i,
                         prop,
                         val,
@@ -1600,6 +1725,18 @@
                     return filter != null && !filter.isAlwaysTrue();
                 };
 
+                this.setAggregateFunc = function(field, aggregateFuncName) {
+                    var field = self.config.getDataField(field);
+                    if (field) {
+                        if (field.setAggregateFunc(aggregateFuncName)) {
+                            refresh();
+                            return true;
+                        }
+                    }
+
+                    return false;
+                };
+
                 this.getData = function(field, rowdim, coldim, aggregateFunc) {
                     var value;
                     if (rowdim && coldim) {
@@ -1607,7 +1744,7 @@
                         var datafieldName = field || (self.config.dataFields[0] || defaultfield).name;
                         var datafield = self.config.getDataField(datafieldName);
 
-                        if (!datafield || (aggregateFunc && datafield.aggregateFunc != aggregateFunc)) {
+                        if (!datafield || (aggregateFunc && datafield.aggregation.func != aggregateFunc)) {
                             value = self.calcAggregation(
                                 rowdim.isRoot ? null : rowdim.getRowIndexes().slice(0),
                                 coldim.isRoot ? null : coldim.getRowIndexes().slice(0), [datafieldName],
@@ -1645,7 +1782,7 @@
 
                     if (rowLeafDimensions.length > 0 && colLeafDimensions.length > 0) {
                         var hAxisLabel = getAxisLabel(config.columnFields);
-                        var vAxisLabel = config.dataFields[0].aggregateFuncName + '(' + config.dataFields[0].caption + ')';
+                        var vAxisLabel = config.dataFields[0].aggregation.caption + '(' + config.dataFields[0].caption + ')';
                         var legendsLabel = getAxisLabel(config.rowFields);
 
                         var data = [];
@@ -1716,10 +1853,10 @@
                                     if (!datafield) {
                                         datafield = self.config.getField(fieldNames[fieldnameIndex]);
                                         if (datafield) {
-                                            aggregateFunc = datafield.dataSettings ? datafield.dataSettings.aggregateFunc : datafield.aggregateFunc;
+                                            aggregateFunc = datafield.dataSettings ? datafield.dataSettings.aggregateFunc.func : datafield.aggregateFunc.func;
                                         }
                                     } else {
-                                        aggregateFunc = datafield.aggregateFunc;
+                                        aggregateFunc = datafield.aggregateFunc.func;
                                     }
                                 }
 
@@ -1733,10 +1870,10 @@
                         } else {
                             for (var datafieldIndex = 0; datafieldIndex < self.config.dataFieldsCount; datafieldIndex++) {
                                 datafield = self.config.dataFields[datafieldIndex] || defaultfield;
-                                if (aggregateFunc || datafield.aggregateFunc) {
+                                if (aggregateFunc || datafield.aggregation.func) {
                                     datafields.push({
                                         field: datafield,
-                                        aggregateFunc: aggregateFunc || datafield.aggregateFunc
+                                        aggregateFunc: aggregateFunc || datafield.aggregation.func
                                     });
                                 }
                             }
@@ -1907,17 +2044,14 @@
                     self.query[valname] = self.measureFunc(undefined, true, undefined, param);
 
 
-                    var aggFunctions = utils.ownProperties(aggregation);
-                    for (var funcIndex = 0; funcIndex < aggFunctions.length; funcIndex++) {
-                        var funcName = aggFunctions[funcIndex];
-                        if (funcName !== 'toAggregateFunc') {
-                            self.query[funcName] = self.measureFunc(
-                                undefined,
-                                true,
-                                aggregation[funcName],
-                                param
-                            );
-                        }
+                    var aggFuncName;
+                    for (var aggFuncName in aggregation.builtins) {
+                        self.query[aggFuncName] = self.measureFunc(
+                            undefined,
+                            true,
+                            aggregation.builtins[aggFuncName].func,
+                            param
+                        );
                     }
                 };
 
@@ -1934,9 +2068,10 @@
                 };
 
                 this.cleanOptions = function(options, innerArgs, outerArgs) {
-                    var opts = {
-                        fieldNames: []
-                    };
+                    var aggregationConf,
+                        opts = {
+                            fieldNames: []
+                        };
 
                     if (outerArgs.multi === true) {
                         if (options && typeof options === 'object') {
@@ -1956,7 +2091,10 @@
                     }
 
                     if (opts.aggregateFunc) {
-                        opts.aggregateFunc = aggregation.toAggregateFunc(opts.aggregateFunc) || aggregation.sum;
+                        aggregationConf = aggregation.resolveAggregateFunc(typeof opts.aggregateFunc === 'function' ? {
+                            func: opts.aggregateFunc
+                        } : opts.aggregateFunc);
+                        opts.aggregateFunc = aggregationConf ? aggregationConf.func : aggregation.builtins.sum.func;
                     }
 
                     return opts;
@@ -2186,13 +2324,15 @@
                     var aggs = {};
 
                     for (var ai = 0; ai < options.fieldNames.length; ai++) {
-                        var datafield = options.fieldNames[ai];
-                        var aggFunc = aggregation.toAggregateFunc(
-                            multi === true ?
-                            options.aggregateFunc || (fieldsConfig && fieldsConfig[datafield] ?
-                                fieldsConfig[datafield].aggregateFunc :
-                                undefined) :
-                            options.aggregateFunc) || aggregation.sum;
+                        var datafield = options.fieldNames[ai],
+                            fieldConfig = fieldsConfig ? fieldsConfig[datafield] : null,
+                            fieldAggregateFunc = fieldConfig ? fieldConfig.aggregateFunc : null,
+                            currAggregateFunc = multi === true ? options.aggregateFunc || fieldAggregateFunc : options.aggregateFunc,
+                            aggFunc = currAggregateFunc ? aggregation.resolveAggregateFunc(typeof currAggregateFunc === 'function' ? {
+                                func: currAggregateFunc
+                            } : currAggregateFunc) : null;
+
+                        aggFunc = aggFunc ? aggFunc.func : aggregation.builtins.sum.func;
 
                         aggs[datafield] = aggFunc(datafield, rowIndexes || 'all', self.source, rowIndexes, null);
                     }
@@ -2886,7 +3026,7 @@
                     axetype: null,
                     type: HeaderType.DATA_VALUE,
                     template: 'cell-template-datavalue',
-                    value: pgrid.getData(this.datafield ? this.datafield.name : null, this.rowDimension, this.columnDimension),
+                    value: value,
                     cssclass: 'cell ' + HeaderType.getCellClass(this.rowType, this.colType),
                     isvisible: isvisible
                 });
@@ -3062,6 +3202,13 @@
                         }
                         return false;
                     };
+
+                    this.setAggregateFunc = function(field, aggregateFuncName) {
+                        if (self.pgrid.setAggregateFunc(field, aggregateFuncName)) {
+                            buildUi();
+                            pivotComponent.setProps({});
+                        }
+                    }
 
                     this.toggleFieldExpansion = function(axetype, field, newState) {
                         if (axetype === axe.Type.ROWS) {
@@ -3677,6 +3824,8 @@
             var uiheaders = _dereq_('../orb.ui.header');
             var filtering = _dereq_('../orb.filtering');
             var domUtils = _dereq_('../orb.utils.dom');
+            var domUtils = _dereq_('../orb.utils.dom');
+            var aggregation = _dereq_('../orb.aggregation');
 
             var extraCol = 0;
             var comps = module.exports;
@@ -4891,6 +5040,14 @@
                     // drag/sort with left mouse button
                     if (e.button !== 0) return;
 
+                    // if the aggregate selector button was clicked, don't start field moving        
+                    if (this.props.axetype === axe.Type.DATA) {
+                        var aggSelectorNode = this.refs.aggSelector.getDOMNode();
+                        if (e.target.parentNode == aggSelectorNode || e.target == aggSelectorNode) {
+                            return;
+                        }
+                    }
+
                     if (e.ctrlKey) {
                         this.props.pivotTableComp.toggleFieldExpansion(this.props.axetype, this.props.field);
                     } else {
@@ -4971,6 +5128,7 @@
                 },
                 render: function() {
                     var self = this;
+                    var AggregateSelector = comps.AggregateSelector;
                     var divstyle = {
                         left: self.state.pos.x + 'px',
                         top: self.state.pos.y + 'px',
@@ -4990,9 +5148,20 @@
                             //' \u2193' :
                             '');
                     var filterClass = (self.state.dragging ? '' : 'fltr-btn') + (this.props.pivotTableComp.pgrid.isFieldFiltered(this.props.field.name) ? ' fltr-btn-active' : '');
-                    var fieldAggFunc = '';
+                    var fieldAggFuncSelector = null;
+
                     if (self.props.axetype === axe.Type.DATA) {
-                        fieldAggFunc = React.createElement("small", null, ' (' + self.props.field.aggregateFuncName + ')');
+                        fieldAggFuncSelector = React.createElement("div", {
+                                className: "agg-selector"
+                            },
+                            React.createElement("div", null, "("),
+                            React.createElement(AggregateSelector, {
+                                ref: "aggSelector",
+                                pivotTableComp: self.props.pivotTableComp,
+                                field: this.props.field
+                            }),
+                            React.createElement("div", null, ")")
+                        );
                     }
 
                     return React.createElement("div", {
@@ -5006,8 +5175,11 @@
                             React.createElement("tbody", null,
                                 React.createElement("tr", null,
                                     React.createElement("td", {
-                                        className: "caption"
-                                    }, self.props.field.caption, fieldAggFunc),
+                                            className: "caption"
+                                        },
+                                        React.createElement("div", null, self.props.field.caption),
+                                        fieldAggFuncSelector
+                                    ),
                                     React.createElement("td", null, React.createElement("div", {
                                         className: 'sort-indicator ' + sortDirectionClass
                                     })),
@@ -5024,6 +5196,70 @@
                             )
                         )
                     );
+                }
+            });
+
+            module.exports.AggregateSelector = react.createClass({
+                pgridwidget: null,
+                getInitialState: function() {
+                    this.pgridwidget = this.props.pivotTableComp.pgridwidget;
+
+                    var aggregateFunctions,
+                        customAdded = false,
+                        field = this.props.field;
+
+                    if (field.enabledBuiltinAggregations) {
+                        aggregateFunctions = aggregation.builtins.getAll().filter(function(agg) {
+                            return field.enabledBuiltinAggregations.indexOf(agg) >= 0;
+                        });
+                    } else {
+                        aggregateFunctions = aggregation.builtins.getAll().slice(0);
+                    }
+
+                    aggregateFunctions = aggregateFunctions.map(function(agg) {
+                        if (agg === field.customAggregationProps.name) {
+                            customAdded = true;
+                            return {
+                                name: agg,
+                                caption: field.customAggregationProps.caption
+                            };
+                        } else {
+                            return {
+                                name: agg,
+                                caption: aggregation.builtins[agg].caption
+                            };
+                        }
+                    });
+
+                    if (!customAdded) {
+                        aggregateFunctions.push({
+                            name: field.customAggregationProps.name,
+                            caption: field.customAggregationProps.caption
+                        });
+                    }
+
+                    aggregateFunctions.sort(function(agg1, agg2) {
+                        return agg1.caption < agg2.caption ? -1 : (agg1.caption > agg2.caption ? 1 : 0);
+                    });
+
+                    return {
+                        aggregateFunctions: aggregateFunctions
+                    };
+                },
+                onAggregateFuncNameChanged: function(newAggregation) {
+                    this.props.pivotTableComp.pgridwidget.setAggregateFunc(this.props.field.name, newAggregation.name);
+                },
+                render: function() {
+                    var Dropdown = comps.Dropdown;
+
+                    return React.createElement(Dropdown, {
+                        showDropdownButton: false,
+                        values: this.state.aggregateFunctions,
+                        valueMember: 'name',
+                        displayMember: 'caption',
+                        selectedValue: this.props.field.aggregation,
+                        onValueChanged: this.onAggregateFuncNameChanged
+                    });
                 }
             });
 
@@ -6142,6 +6378,26 @@
             }
 
             module.exports.Dropdown = react.createClass({
+                getInitialState: function() {
+                    var values = [],
+                        caption;
+
+                    for (var i = 0; i < this.props.values.length; i++) {
+                        caption = this.props.displayMember ? this.props.values[i][this.props.displayMember] : this.props.values[i];
+                        values.push(React.createElement("li", {
+                            key: 'item' + i,
+                            "data-item-index": i,
+                            dangerouslySetInnerHTML: {
+                                __html: caption
+                            }
+                        }));
+                    }
+
+                    return {
+                        showDropdownButton: this.props.showDropdownButton !== undefined ? this.props.showDropdownButton : true,
+                        values: values
+                    }
+                },
                 openOrClose: function(e) {
                     var valueNode = this.refs.valueElement.getDOMNode();
                     var valuesListNode = this.refs.valuesList.getDOMNode();
@@ -6155,7 +6411,9 @@
                 },
                 onMouseEnter: function() {
                     var valueNode = this.refs.valueElement.getDOMNode();
-                    valueNode.className = 'orb-tgl-btn-down';
+                    if (this.state.showDropdownButton) {
+                        valueNode.className = 'orb-tgl-btn-down';
+                    }
                     valueNode.style.backgroundPosition = 'right center';
                 },
                 onMouseLeave: function() {
@@ -6180,10 +6438,12 @@
                     }
 
                     if (isli) {
-                        var value = target.textContent;
-                        var valueElement = this.refs.valueElement.getDOMNode();
-                        if (valueElement.textContent != value) {
-                            valueElement.textContent = value;
+                        var value = this.props.values[target.getAttribute('data-item-index')],
+                            caption = this.props.displayMember ? value[this.props.displayMember] : value,
+                            valueElement = this.refs.valueElement.getDOMNode();
+
+                        if (valueElement.textContent != caption) {
+                            valueElement.textContent = caption;
                             if (this.props.onValueChanged) {
                                 this.props.onValueChanged(value);
                             }
@@ -6191,21 +6451,8 @@
                     }
                 },
                 render: function() {
-                    function createSelectValueFunc(value) {
-                        return function() {
-                            this.selectValue(value);
-                        };
-                    }
 
-                    var values = [];
-                    for (var i = 0; i < this.props.values.length; i++) {
-                        values.push(React.createElement("li", {
-                            key: 'item' + i,
-                            dangerouslySetInnerHTML: {
-                                __html: this.props.values[i]
-                            }
-                        }));
-                    }
+                    var selectedCaption = this.props.displayMember ? this.props.selectedValue[this.props.displayMember] : this.props.selectedValue;
 
                     return React.createElement("div", {
                             className: "orb-select"
@@ -6213,7 +6460,7 @@
                         React.createElement("div", {
                             ref: "valueElement",
                             dangerouslySetInnerHTML: {
-                                __html: this.props.selectedValue
+                                __html: selectedCaption
                             },
                             onMouseEnter: this.onMouseEnter,
                             onMouseLeave: this.onMouseLeave
@@ -6225,7 +6472,7 @@
                                 },
                                 onClick: this.selectValue
                             },
-                            values
+                            this.state.values
                         )
                     );
                 }
@@ -6947,6 +7194,7 @@
             }
 
         }, {
+            "../orb.aggregation": 2,
             "../orb.axe": 3,
             "../orb.export.excel": 6,
             "../orb.filtering": 7,
