@@ -48,7 +48,9 @@ rpivot <-
       dataHeadersLocation=dataHeadersLocation,
       preFilters=preFilters,
       toolbar= toolbar,
-      grandTotal = list( rowsvisible=FALSE, columnsvisible= FALSE )
+      grandTotal = list( rowsvisible=FALSE, columnsvisible= FALSE ),
+      subTotal = list(visible=FALSE)
+
     )
 
     # pass the data and settings using 'x'
