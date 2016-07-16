@@ -50,7 +50,7 @@ HTMLWidgets.widget({
     if(dataAreaElement != null) {
       dataAreaElement.parentNode.id = (x.name || 'pgridwidget') + '_dataArea';
       if(dataAreaElement.parentNode.className.indexOf('shiny-plot-output') < 0) {
-        dataAreaElement.parentNode.className += ' shiny-plot-output';
+        dataAreaElement.parentNode.className += 'shiny-plot-output';
       }
     }
 
