@@ -7,7 +7,8 @@
 rpivot(dataSource, fields, displayMode = NULL, name = "pgridwidget",
   rows = NULL, columns = NULL, data = NULL, width = NULL,
   height = NULL, dataSettings = NULL, dataHeadersLocation = "columns",
-  toolbar = list(visible = TRUE), theme = "green")
+  preFilters = NULL, toolbar = list(visible = TRUE), theme = "green",
+  update = FALSE)
 }
 \arguments{
 \item{dataSource}{a data object (currently supported objects are matrices, data
