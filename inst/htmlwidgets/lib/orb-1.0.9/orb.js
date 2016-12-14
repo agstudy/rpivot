@@ -128,6 +128,12 @@
                         },
                         caption: 'Count'
                     },
+                    median: {
+                        func: function(datafield, intersection, datasource) {
+                          return calcMedian(datafield, intersection, datasource, true);
+                        },
+                        caption: 'Median'
+                    },
                     sum: {
                         func: function(datafield, intersection, datasource) {
                             var sum = 0;
@@ -230,6 +236,30 @@
                     }
                 }
             };
+
+            function vect_median(values){
+              var median = 0
+              values.sort((a, b) => a - b);
+              median = (values[(values.length - 1) >> 1] + values[values.length >> 1]) / 2;
+              return median;
+            }
+
+            function calcMedian(datafield, intersection, datasource, population) {
+                var median = 0;
+                var len = (intersection === 'all' ? datasource : intersection).length;
+                if (len > 0) {
+                    if (population || len > 1) {
+                      var values = [];
+                      forEachIntersection(datafield, intersection, datasource, function(val) {
+                            values.push(val);
+                        });
+                      median = vect_median(values);
+                    } else {
+                        median = NaN;
+                    }
+                }
+                return median;
+            }
 
             function calcVariance(datafield, intersection, datasource, population) {
                 var variance = 0;
@@ -5040,7 +5070,7 @@
                     // drag/sort with left mouse button
                     if (e.button !== 0) return;
 
-                    // if the aggregate selector button was clicked, don't start field moving        
+                    // if the aggregate selector button was clicked, don't start field moving
                     if (this.props.axetype === axe.Type.DATA) {
                         var aggSelectorNode = this.refs.aggSelector.getDOMNode();
                         if (e.target.parentNode == aggSelectorNode || e.target == aggSelectorNode) {

@@ -10,7 +10,7 @@ fields = list(
     name= '6',
     caption= 'Amount',
     dataSettings= list(
-      aggregateFunc= 'avg'
+      aggregateFunc= 'count'
     )
   )
 )
