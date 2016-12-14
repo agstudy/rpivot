@@ -571,7 +571,7 @@
                         caption: aggregation.builtins.sum.caption
                     },
                     enabledBuiltinAggregations: null,
-                    formatFunc: function(val) {
+                    formatFunc: function(val,aggFunc) {
                         return val != null ? val.toString() : '';
                     }
                 };
@@ -1405,7 +1405,8 @@
                         var dataRow = pgridwidget.dataRows[i];
                         rowStr += dataRow.reduce(function(tr, dataCell, index) {
                             var formatFunc = config.dataFields[index = index % config.dataFields.length].formatFunc;
-                            var value = dataCell.value == null ? '' : formatFunc ? formatFunc(dataCell.value) : dataCell.value;
+                            var aggreg = config.dataFields[index = index % config.dataFields.length].aggregation;
+                            var value = dataCell.value == null ? '' : formatFunc ? formatFunc(dataCell.value,aggreg) : dataCell.value;
                             return (tr += '<td>' + value + '</td>');
                         }, '');
                         str += rowStr + '</tr>';
@@ -4510,7 +4511,8 @@
                             value = cell.value.caption;
                             break;
                         case 'cell-template-datavalue':
-                            value = (cell.datafield && cell.datafield.formatFunc) ? cell.datafield.formatFunc(cell.value) : cell.value;
+                            var aggreg = (cell.datafield && cell.datafield.aggregation) ? cell.datafield.aggregation : null;
+                            value = (cell.datafield && cell.datafield.formatFunc) ? cell.datafield.formatFunc(cell.value,aggreg) : cell.value;
                             if (value && self.props.pivotTableComp.pgridwidget.pgrid.config.displayMode.isHeatmap()) {
                                 cellStyle = {
                                     backgroundColor: 'rgb(255, ' + Math.round((1 - cell.heatmapValue) * 174 + 81) + ', ' + Math.round((1 - cell.heatmapValue) * 174 + 81) + ')'
